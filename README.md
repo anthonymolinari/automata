@@ -1,4 +1,4 @@
-## Automaton
+## Automata
 Build and test finite state machines
 
 ### Feauture List
