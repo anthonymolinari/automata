@@ -3,7 +3,8 @@ Build and test finite state machines
 
 ### Feauture List
  - Create DFAs,NFAs, and Regular Expressions
-
+ - Test Membership 
+ 
 #### Authors:
  - Anthony Molinari
  - Hal Norman
