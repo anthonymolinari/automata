@@ -7,7 +7,7 @@ Build and test finite state machines
 #### Authors:
  - Anthony Molinari
  - Hal Norman
- - Mark W
+ - Marc Wegrzynowski
 
 
 
