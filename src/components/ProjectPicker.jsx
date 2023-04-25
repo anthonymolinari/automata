@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Stack, Box, Paper, Button, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { getProjects } from '../services/filesystem_ops';
+import { getProjects, openProject } from '../services/filesystem_ops';
+
+import { GlobalContext } from '../context/GlobalState';
 
 import '../styles/ProjectPicker.css';
 
@@ -15,6 +17,8 @@ const Item = styled(Paper)(({ theme }) => ({
 
 export default function ProjectPicker(props) {
     const [projects, setProjects] = useState([]);
+
+    const { setActiveProject } = useContext(GlobalContext);
     
     useEffect(() => {
         // retrive list of project files from the filesystem
@@ -25,8 +29,15 @@ export default function ProjectPicker(props) {
 
     const handleSelect = (event) => {
         event.preventDefault();
-
         console.log(event.target.value);
+        // open project from path
+        const project_json = openProject(event.target.value);
+    
+        // parse to automata object
+        // ** need a jsonLoads method? **
+
+        // that that automata object and add to global state
+        setActiveProject(project_json);
     }
 
     return (
@@ -36,7 +47,8 @@ export default function ProjectPicker(props) {
                 {projects.map((project) => (
                     <Item key={project.name+project.path}>
                         {project.name}
-                        <Button onClick={handleSelect} value={project.name}>Open</Button>
+                        <Button 
+                        onClick={handleSelect} value={project.name}>Open</Button>
                         <br/>
                         PATH: {project.path}
                     </Item>
