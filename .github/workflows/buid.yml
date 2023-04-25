@@ -8,10 +8,21 @@ jobs:
   matrix_build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: 
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: install system depedencies
+        # install deps for windows, linux, and macos
+        
+      - name: Setup Rust
+        uses: AtiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
 
       - name: Setup Node Environment
         uses: actions/setup-node@v3
