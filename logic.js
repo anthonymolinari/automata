@@ -3,7 +3,29 @@ class automaton {
     constructor(name) {
         this.autoName = name,
         this.listOfNodes = []
+        this.transitionValues = []
+        this.regularExpression = ""
+
+        //This will decide if the automaton is a
+        // DFA, NFA or R.E.
+        //0: Unknown (Default start state)
+        //1: DFA
+        //2: NFA
+        this.automatonType = 0
     }
+
+    //Tells if the Automaton is a DFA or NFA 
+    //  (Only needed for when simplification occurs)
+    determineState() {
+        for (let iter = 0; iter < this.transitionValues.length; iter++) {
+            if (this.transitionValues[iter][1] > this.listOfNodes.length) {
+                this.automatonType = 2
+                return
+            }
+        }
+        this.automatonType = 1
+    }
+
 
     statementParser(statement) {
         
@@ -39,6 +61,38 @@ class automaton {
         return [origin, destination, parameter]
     }
 
+    //Keeps track of all of the paramemters used
+    //opFlag codes:
+    //1, check to add
+    //2, check to remove
+    updateTransitionValues(parameter, opFlag) {
+        switch(opFlag) {
+            //Check if the parameter is already there, if not then add
+            case 1:
+                for (let iter = 0; iter < this.transitionValues.length; iter++) {
+                    if (parameter === this.transitionValues[iter][0]) {
+                        this.transitionValues[iter][1]++
+                        return
+                    }
+                }
+                this.transitionValues.push([parameter, 1])
+                break
+            //Checks if the parameter is there, if it is then remove
+            case 2:
+                for (let iter = 0; iter < this.transitionValues.length; iter++) {
+                    if (parameter === this.transitionValues[iter][0]) {
+                        if (this.transitionValues[iter][1] > 1) {
+                            this.transitionValues[iter][1]--
+                        }
+                        else {
+                            this.transitionValues.splice(iter, 1)
+                        }
+                    }
+                }
+                break
+        }
+    }
+
     //Adding a node is simple because of how easy it is to remove a node
     addNode(nodeIdnt = 0, xPos, yPos) {
         let nodeId = 0
@@ -70,6 +124,7 @@ class automaton {
                 //In Linked Rules, command[0] is the node we want to alter
                 this.listOfNodes[command[0]].removeRule(this.listOfNodes[nodeID].linkedRules[iter])
             }
+            this.updateTransitionValues(command[2], 2)
         }
 
         //Clear out all the statements from Rules
@@ -83,6 +138,7 @@ class automaton {
                 //In Rules, command[1] is the node we want to alter
                 this.listOfNodes[command[1]].removeLinkedRule(this.listOfNodes[nodeID].rules[iter])
             }
+            this.updateTransitionValues(command[2], 2)
         }
         
         //Final action to do
@@ -102,21 +158,102 @@ class automaton {
         
         switch(operationFlag) {
             case 1:
+                //Create the rule for the node to be added
                 this.listOfNodes[origin].makeRule(command)
                 if (origin != destination) {
+                    //Create any linked rules from other nodes pointing to this node
                     this.listOfNodes[destination].makeLinkedRule(command)
                 }
+
+                //Perform book keeping
+                this.updateTransitionValues(parameter, 1)
+                this.determineState()
                 break
             case 2:
+                //Clear the rules out of the node to be removed
                 this.listOfNodes[origin].removeRule(command)
                 if (origin != destination) {
+                    //Clear any linked rules from other nodes pointing to this node
                     this.listOfNodes[destination].removeLinkedRule(command)
                 }
+
+                //Perform book keeping
+                this.updateTransitionValues(parameter, 2)
+                this.determineState()
                 break
             case 3:
                 console.log(command)
                 break
         }
+    }
+
+    buildTable() {
+        //First, construct a table for which to determine which nodes to simplify
+        //Example table setup
+        // -   -  'a' 'b' 
+        // S   0   0   1
+        // G   1   1   0
+        //First two slots are reserved for node number and identifier
+        //After that, the destination of each statement and the parameter
+        //  are the only important pieces of information, since everything
+        //  will iterate downwards to populate the table
+        //This for loop gets the number of unique parameters that exist
+        let uniqueParams = []
+        for (let iter = 0; iter < this.transitionValues.length; iter++) {
+            uniqueParams[iter] = this.transitionValues[iter][0]
+        }
+
+        if (uniqueParams.length < 2) {
+            console.log("Cannot simplify, too few nodes")
+            //The -1 is an error code for failed
+            return -1
+        }
+
+        let transitionTable = []
+        // creating two-dimensional array for future use
+        //This sets up the array in the proper rotation, do not change
+        for (let iter = 0; iter < this.listOfNodes.length + 1; iter++) {
+            transitionTable[iter] = [];
+            for (let innerIter = 0; innerIter < uniqueParams.length + 2; innerIter++) {
+                transitionTable[iter][innerIter] = -1;
+            }
+        }
+        
+        //This part builds the first row, since no access calls need to be made outside this function
+        transitionTable[0][0] = '-'
+        transitionTable[0][1] = '-'
+        for (let iter = 0; iter < uniqueParams.length; iter++) { transitionTable[0][iter + 2] = uniqueParams[iter]}
+
+        //Build the remaining lines
+        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+            //Update the array to show if the node is a Goal node, Non-Terminal node or a Start node
+            switch (this.listOfNodes[iter].identity) {
+                case 0:
+                    transitionTable[iter + 1][0] = 'T'
+                    break
+                case 1:
+                    transitionTable[iter + 1][0] = 'S'
+                    break
+                case 2:
+                    transitionTable[iter + 1][0] = 'G'
+                    break
+            }
+
+            //Update the array to show which node is currently being explored
+            transitionTable[iter + 1][1] = this.listOfNodes[iter].nodeID
+
+            //Update the array to show the transitions on each parameter
+            for (let innerIter = 0; innerIter < this.listOfNodes[iter].rules.length; innerIter++) {
+                let command = this.statementParser(this.listOfNodes[iter].rules[innerIter])
+                for (let arrIdx = 2; arrIdx < transitionTable[0].length; arrIdx++) {
+                    if (transitionTable[0][arrIdx] === command[2]) {
+                        transitionTable[iter + 1][arrIdx] = command[1]
+                    }
+                }
+            }
+        }
+
+        return transitionTable
     }
 
     //Not needed, might be deleted at a later date
@@ -230,6 +367,7 @@ class node {
 const autoOne = new automaton("Test 1") //Dummy Name
 
 //Builds a dummy DFA (Use later for testing DFA - simplification for conversion post R.E conversion (Maybe))
+/*
 autoOne.addNode(1, 17.25, 84.7)
 autoOne.updateLink(0, 0, 'b', 1)
 autoOne.addNode(0, 40.25, 55.7)
@@ -239,14 +377,64 @@ autoOne.addNode(2, 90.25, 13.7)
 autoOne.updateLink(1, 2, 'a', 1)
 autoOne.updateLink(2, 2, 'a', 1)
 autoOne.updateLink(2, 2, 'b', 1)
+*/
 
-//Testing adding and removing a link
+
+//Test DFA structure (its also an NFA by virtue)
+// ->0 <--> 1
+//   |      |
+//  *2 <-> *3
+//Create the top nodes
+autoOne.addNode(1, 13, 17)
+autoOne.addNode(0, 33, 17)
+//Link them together
+autoOne.updateLink(0, 1, 'a', 1)
+autoOne.updateLink(1, 0, 'a', 1)
+//create the bottom nodes
+autoOne.addNode(2, 13, 37)
+autoOne.addNode(2, 33, 37)
+//Link the bottom nodes together
+autoOne.updateLink(2, 2, 'b', 1)
+autoOne.updateLink(3, 3, 'b', 1)
+autoOne.updateLink(3, 2, 'a', 1)
+autoOne.updateLink(2, 3, 'a', 1)
+//Link the top nodes to the bottom nodes
 autoOne.updateLink(0, 2, 'b', 1)
-autoOne.updateLink(0, 2, 'b', 2)
+autoOne.updateLink(1, 3, 'b', 1)
+
+
+/*
+//Testing adding and removing a link 
+// (Updated the logic to keep track of the transtion count)
+autoOne.addNode(1, 77, 44)
+autoOne.addNode(2, 44, 77)
+autoOne.updateLink(0, 0, 'b', 1)
+autoOne.updateLink(0, 1, 'a', 1)
+autoOne.updateLink(1, 1, 'a', 1)
+autoOne.updateLink(1, 0, 'b', 1)
+//console.log(autoOne.transitionValues[0], " , " ,autoOne.transitionValues[1])
+//autoOne.removeNode(1)
+//console.log(autoOne.transitionValues[0], " , " ,autoOne.transitionValues[1])
+*/
+
+//Internal call to build a DFA Table
+let table = autoOne.buildTable()
+
+//printout for DEBUG only
+for (let i = 0; i < table.length; i++) {
+    console.log(table[i])
+}
+
+//check if the Automaton is updating between being a NFA or DFA
+console.log(autoOne.automatonType)
+autoOne.updateLink(0, 2, 'a', 1)
+console.log(autoOne.automatonType)
+autoOne.updateLink(0, 2, 'a', 2)
+console.log(autoOne.automatonType)
 
 //Checks if removeNode works
 //autoOne.removeNode(1)
 
 //Adds a node post removal to ensure that the proper nodeID is being used
 //autoOne.addNode(0, 30.77, 70.34)
-autoOne.printNodes()
+//autoOne.printNodes()
