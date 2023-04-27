@@ -94,7 +94,7 @@ class automaton {
     }
 
     //Adding a node is simple because of how easy it is to remove a node
-    addNode(nodeIdnt = 0, xPos, yPos) {
+    addNode(xPos, yPos) {
         let nodeId = 0
         //Find the next value for nodeId, breaking if after a full run through
         //  there are no more matches
@@ -107,7 +107,13 @@ class automaton {
                 }
             }
         }
-        this.listOfNodes.push(new node(xPos, yPos, nodeId, nodeIdnt))
+        //Default the node to Non-terminal
+        this.listOfNodes.push(new node(xPos, yPos, nodeId, 0))
+    }
+
+    //Update the nodes identity
+    updateIdentity(nodeId, nodeIden) {
+        this.listOfNodes[nodeId].identity = nodeIden
     }
 
     //"Deletes" a node by clearing all the data within./lo
@@ -385,14 +391,17 @@ autoOne.updateLink(2, 2, 'b', 1)
 //   |      |
 //  *2 <-> *3
 //Create the top nodes
-autoOne.addNode(1, 13, 17)
-autoOne.addNode(0, 33, 17)
+autoOne.addNode(13, 17)
+autoOne.updateIdentity(0, 1)
+autoOne.addNode(33, 17)
 //Link them together
 autoOne.updateLink(0, 1, 'a', 1)
 autoOne.updateLink(1, 0, 'a', 1)
 //create the bottom nodes
-autoOne.addNode(2, 13, 37)
-autoOne.addNode(2, 33, 37)
+autoOne.addNode(13, 37)
+autoOne.updateIdentity(2, 2)
+autoOne.addNode(33, 37)
+autoOne.updateIdentity(3, 2)
 //Link the bottom nodes together
 autoOne.updateLink(2, 2, 'b', 1)
 autoOne.updateLink(3, 3, 'b', 1)
