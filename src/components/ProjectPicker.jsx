@@ -15,11 +15,11 @@ const Item = styled(Paper)(({ theme }) => ({
     color: theme.palette.text.secondary,
 }));
 
-export default function ProjectPicker(props) {
+export default function ProjectPicker() {
     const [projects, setProjects] = useState([]);
 
-    const { setActiveProject } = useContext(GlobalContext);
-    
+    const { setActiveProject, setActiveView } = useContext(GlobalContext);
+
     useEffect(() => {
         // retrive list of project files from the filesystem
         getProjects().then( (data) => {
@@ -28,16 +28,23 @@ export default function ProjectPicker(props) {
     }, [])
 
     const handleSelect = (event) => {
-        event.preventDefault();
+        // event.preventDefault();
         console.log(event.target.value);
         // open project from path
-        const project_json = openProject(event.target.value);
-    
-        // parse to automata object
-        // ** need a jsonLoads method? **
+        openProject(event.target.value)
+            .then( data => {
+                console.log(data)
+                setActiveProject(data);
+            }).catch( error => {
+                console.log(error);
+            });
 
-        // that that automata object and add to global state
-        setActiveProject(project_json);
+        setActiveView('editor'); // switch view to editor        
+    }
+
+    if (projects.length < 1) {
+        // redirect to 
+        console.log('no projects... redirecting to create project view');
     }
 
     return (
@@ -50,7 +57,7 @@ export default function ProjectPicker(props) {
                         <Button 
                         onClick={handleSelect} value={project.name}>Open</Button>
                         <br/>
-                        PATH: {project.path}
+                        {/* PATH: {project.path} */}
                     </Item>
                 ))}
             </Stack>

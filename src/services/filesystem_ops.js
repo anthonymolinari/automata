@@ -61,14 +61,16 @@ export async function createNewProjectFiles(projectName) {
 
 // open, read contents of project file and returns as json
 export async function openProject(projectName) {
-    let contents = {};
-
-    const raw = await readTextFile(`${projectDir}/${projectName}`, {
-        dir: BaseDirectory.Document
-    });
-
-    contents = JSON.parse(raw);
-    return contents;
+    return new Promise( (resolve, reject) => {
+        readTextFile(`${projectDir}/${projectName}`, {
+            dir: BaseDirectory.Document
+        }).then( (value) => {
+            let json_data = JSON.parse(value);
+            resolve(json_data);
+        }).catch( (error) => {
+            reject(error);
+        })
+    })
 }
 
 
