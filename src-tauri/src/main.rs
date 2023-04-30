@@ -29,7 +29,7 @@ fn main() {
                     event.window().emit("menu", "open_project").unwrap();
                 }
                 "save" => {
-                    event.window().emit("menu", "save").unwrap();
+                    event.window().emit("action", "save").unwrap();
                 }
                 "settings" => {
                     event.window().emit("menu", "settings").unwrap();

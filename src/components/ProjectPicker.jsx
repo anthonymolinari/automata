@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
-import { Stack, Box, Paper, Button, Typography } from '@mui/material';
+import { Stack, Paper, Button } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { getProjects, openProject } from '../services/filesystem_ops';
 
@@ -23,28 +23,28 @@ export default function ProjectPicker() {
     useEffect(() => {
         // retrive list of project files from the filesystem
         getProjects().then( (data) => {
+            console.log(data);
             setProjects(data);
         })
     }, [])
 
     const handleSelect = (event) => {
-        // event.preventDefault();
-        console.log(event.target.value);
         // open project from path
         openProject(event.target.value)
             .then( data => {
                 console.log(data)
                 setActiveProject(data);
+                setActiveView('editor'); // switch view to editor        
             }).catch( error => {
                 console.log(error);
             });
 
-        setActiveView('editor'); // switch view to editor        
+//        setActiveView('editor'); // switch view to editor        
     }
 
     if (projects.length < 1) {
         // redirect to 
-        console.log('no projects... redirecting to create project view');
+        console.log('no projects... redirecting to create project view'); 
     }
 
     return (

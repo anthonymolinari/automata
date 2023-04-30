@@ -6,7 +6,9 @@ export default function GlobalProvider({ children }) {
     const [ activeProject, setActiveProject ] = useState(Object);
     // manage active view, this can be updated from anywhere in the
     // component tree
-    const [ activeView, setActiveView ] = useState('');
+    // todo: **** find better way to default to project selection
+    // view, when application is first starting
+    const [ activeView, setActiveView ] = useState('open_project');
 
     return (
         <GlobalContext.Provider value={{ 
