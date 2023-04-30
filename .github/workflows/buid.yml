@@ -29,7 +29,8 @@ jobs:
             libappindicator-dev \
             libgdk3.0-cil \
             libatk1.0-dev \
-            libsoup2.4-dev 
+            libsoup2.4-dev \
+            cmake
 
       - name: Setup Rust
         uses: AtiltedTree/setup-rust@v1
