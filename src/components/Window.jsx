@@ -30,16 +30,16 @@ export default function Window() {
   });
 
   listen('action', (event) => {
-      console.log(`action event on (${event.windowLabel}): ${event.payload}`);
-      if (event.payload === 'save') {
-          console.log('saving current project');
-      }
+    console.log(`action event on (${event.windowLabel}): ${event.payload}`);
+    if (event.payload === 'save') {
+      console.log('saving current project');
+    }
   });
 
   // when no view is active, loading animation & set view
   if (!activeView) {
     console.log('no active view set');
-    // set active view here?
+    setActiveView('open_project');
     return (
       <Box sx={{ display: 'flex' }}>
         <CircularProgress />
