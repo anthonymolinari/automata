@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ 'main', 'anthony' ]
+    branches: [ 'main', 'anthony', 'release-*' ]
 
 jobs: 
   matrix_build:
@@ -10,12 +10,15 @@ jobs:
       matrix:
         os: 
           - ubuntu-latest
-          - windows-latest
-          - macOS-latest
+          #- windows-latest
+          #- macOS-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
         
+      - name: install deps
+        if: ${{ matrix.os }} == ubuntu-latest
+
       - name: Setup Rust
         uses: AtiltedTree/setup-rust@v1
         with:
