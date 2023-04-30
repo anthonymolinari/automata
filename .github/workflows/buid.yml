@@ -30,6 +30,7 @@ jobs:
             libgdk3.0-cil \
             libatk1.0-dev \
             libsoup2.4-dev \
+            libjavascriptcoregtk-4.0-dev \
             cmake
 
       - name: Setup Rust
