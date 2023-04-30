@@ -10,13 +10,13 @@ jobs:
       matrix:
         os: 
           - ubuntu-latest
-          #- windows-latest
+          - windows-latest
           #- macOS-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
         
-      - name: install deps
+      - name: install linux deps
         if: ${{ matrix.os }} == ubuntu-latest
         run: |
           sudo apt install -y \
@@ -28,7 +28,8 @@ jobs:
             librsvg2-dev \
             libappindicator-dev \
             libgdk3.0-cil \
-            libatk1.0-dev
+            libatk1.0-dev \
+            libsoup2.4-dev 
 
       - name: Setup Rust
         uses: AtiltedTree/setup-rust@v1
