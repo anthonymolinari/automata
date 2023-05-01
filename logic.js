@@ -1,4 +1,3 @@
-
 class automaton {
     constructor(name) {
         this.autoName = name,
@@ -262,22 +261,154 @@ class automaton {
         return transitionTable
     }
 
-    //Not needed, might be deleted at a later date
-    /*
-    returnValidID() {
-        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
-            if (this.listOfNodes[iter].nodeID === iter) {
-                //Do nothing
-            }
-            else { //There is a missing node
-                return iter;
+    //There is almost certainly a MUCH better solution to this
+    //  but I have no idea, currently O(n^3) but might be reducible
+    //  to O(n^2) or lower
+    simplifyDFA() {
+        //Check if the Automaton is a DFA
+        if (this.automatonType != 1) {
+            console.log("Error: DFA not detected")
+            return;            
+        }
+
+        let table = this.buildTable()
+        let tableLocation = []
+        let equalNodes = []
+
+        //Find the location of all the nodes (Might not be needed)
+        for (let iter = 1; iter < table.length; iter++) {
+            tableLocation.push([table[iter][1], table[iter][0]])
+        }
+
+        for (let iter = 1; iter < table.length; iter++) {            
+            //Check all nodes below the current node to see if any are equivalent
+            for (let innerIter = iter + 1; innerIter < table.length; innerIter++) {
+                //If equivalence becomes equal to the length of possible transitions,
+                //  then the nodes are equal
+                let equivalence = 0;
+                for (let arrIdx = 2; arrIdx < table[innerIter].length; arrIdx++) {
+                    let valueOne = parseInt(table[iter][arrIdx])
+                    let valueTwo = parseInt(table[innerIter][arrIdx])
+                    if (valueOne === -1 || valueTwo === -1) {
+                        //Do nothing unless both are equal to -1
+                        if (valueOne === valueTwo) {
+                            equivalence++
+                        }
+                    }
+                    else {
+                        let tableValOne = -1, tableValTwo = -1, flag = 0
+                        for (let arrIdx = 0; arrIdx < tableLocation.length; arrIdx++) {
+                            if (tableLocation[arrIdx][0] === valueOne && flag != 2) {
+                                tableValOne = tableLocation[arrIdx][1]
+                                if (flag === 1) { break }
+                                flag = 2
+                            }
+                            else if (tableLocation[arrIdx][0] === valueTwo && flag != 1) {
+                                tableValTwo = tableLocation[arrIdx][1]
+                                if (flag === 2) { break }
+                                flag = 1
+                            }
+                        }
+
+                        //Fix logic here for second running
+                        if ((tableValOne === tableValTwo) || (tableValOne === 'S' && tableValTwo === 'T') 
+                        || (tableValOne === 'T' && tableValTwo === 'S')) {
+                            equivalence++
+                        }   
+                    }
+                }
+                if (equivalence === this.transitionValues.length) {
+                    //DEBUG printout
+                    //console.log("Equivalent nodes: ", iter - 1, " and ", innerIter - 1)
+                    //iter will be updated while innerIter will be removed
+                    equalNodes.push([iter - 1, innerIter - 1])
+                }
             }
         }
-        //If all nodes are accounted for, then simply 
-        // return the size for the next input
-        return this.listOfNodes.length
+
+        //Call helper function to perform the deletes and updates
+        //  This also helps to make the code more readable since it's one large
+        //  blocks broken up into two functions
+        if (equalNodes.length > 0) {
+            this.simplifyDFAHelper(equalNodes) 
+            //Simplification has occured
+            return 0
+        }
+        else {
+            //There is no more possible simplification
+            return -1 
+        }
     }
-    */
+
+    simplifyDFAHelper(nodeGroups) {
+        let rules = []
+
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            //check if the node that would be removed is actually the Start node
+            //  If it is, then swap the nodes before the rest of the logic
+            if (this.listOfNodes[nodeGroups[iter][1]].identity === 1) {
+                let temp = nodeGroups[iter][0];
+                nodeGroups[iter][0] = nodeGroups[iter][1]
+                nodeGroups[iter][1] = temp
+            }
+
+            //Get the rules of the node to be updated
+            let rulesSize = this.listOfNodes[nodeGroups[iter][0]].rules.length
+            for (let innerIter = 0, leftShift = 0; innerIter < rulesSize; innerIter++, leftShift--) {
+                let command = this.statementParser(this.listOfNodes[nodeGroups[iter][0]].rules[innerIter + leftShift])
+
+                //Check if the statement points to the node that is going
+                // to be removed
+                this.updateLink(command[0], command[1], command[2], 2)
+                if (parseInt(command[1]) === nodeGroups[iter][1]) {
+                    //If so, make the command a looping statement
+                    command[1] = command[0]
+                }
+
+                //Save the command for later user
+                rules.push([command[0],command[1], command[2]])
+            }
+
+            //Update the rules of the non-removed node
+            for (let innerIter = 0; innerIter < rules.length; innerIter++) {
+                this.updateLink(rules[innerIter][0], rules[innerIter][1], rules[innerIter][2], 1)
+            }
+
+            //Clear out rules for the next repeat
+            rules = []
+        }
+
+        //Remove any invalid statements from linkedRules
+        //leftShift is used to stay at the proper location within the array
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            let linkedRulesSize = this.listOfNodes[nodeGroups[iter][0]].linkedRules.length
+            for (let innerIter = 0, leftShift = 0; innerIter < linkedRulesSize; innerIter++) {
+                let command = this.statementParser(this.listOfNodes[nodeGroups[iter][0]].linkedRules[innerIter + leftShift])
+
+                if (parseInt(command[0]) === nodeGroups[iter][1]) {
+                    this.listOfNodes[nodeGroups[iter][0]].removeLinkedRule(`{${parseInt(command[0])},${parseInt(command[1])},${command[2]}}`)
+                    leftShift--
+                }
+            }
+        }
+
+        //Remove the equivalent nodes
+        let leftShift = 0
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            //This will miss linkedRules removals, but that that can be ignored
+            this.removeNode(nodeGroups[iter][1] - leftShift)
+
+            //Check if the next nodeID is greater than the
+            //  length of listOfNodes, in which case you need to
+            //  minus that nodeID by leftShift to be in the
+            //  proper place for removeNode to function correctly
+            if (nodeGroups[iter][1] < this.listOfNodes.length) {
+                leftShift++
+            }
+        }
+
+
+    }
 
     //The limit is high, but printing over 10k nodes is 
     // not in the scope of this project
@@ -334,10 +465,22 @@ class node {
         //Example statements:
         // {0, 1, a}
         // {0, 0, b}
+        //check if the statement already exists
+        for (let iter = 0; iter < this.rules.length; iter++) {
+            if (statement === this.rules[iter]) {
+                return
+            }
+        }
         this.rules.push(statement)
     }
 
     makeLinkedRule(statement) {
+        //check if the statement already exists
+        for (let iter = 0; iter < this.linkedRules.length; iter++) {
+            if (statement === this.linkedRules[iter]) {
+                return
+            }
+        }
         this.linkedRules.push(statement)
     }
 
@@ -351,7 +494,7 @@ class node {
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
 
     }
 
@@ -365,7 +508,7 @@ class node {
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
     }
 }
 
@@ -426,6 +569,7 @@ autoOne.updateLink(1, 0, 'b', 1)
 //console.log(autoOne.transitionValues[0], " , " ,autoOne.transitionValues[1])
 */
 
+/*
 //Internal call to build a DFA Table
 let table = autoOne.buildTable()
 
@@ -433,17 +577,50 @@ let table = autoOne.buildTable()
 for (let i = 0; i < table.length; i++) {
     console.log(table[i])
 }
+*/
 
+/*
 //check if the Automaton is updating between being a NFA or DFA
 console.log(autoOne.automatonType)
 autoOne.updateLink(0, 2, 'a', 1)
 console.log(autoOne.automatonType)
 autoOne.updateLink(0, 2, 'a', 2)
 console.log(autoOne.automatonType)
+*/
+
+
+//Simplification does not re-link from other affected nodes
+//This is what the command would look like for executing
+//  DFA - Simplification
+//===========================
+let tempVal = autoOne.simplifyDFA()
+while (tempVal != -1) {
+    tempVal = autoOne.simplifyDFA()
+}
+
+if (tempVal === -1) {
+    console.log("No more simplification possible!")
+}
+//===========================
+
+//Recall buildTable to check if the DFA was simplified
+let table = autoOne.buildTable()
+
+//printout for DEBUG only
+for (let i = 0; i < table.length; i++) {
+    console.log(table[i])
+}
+
+/*
+for (let i = 0; i < autoOne.transitionValues.length; i++ ) { 
+    console.log(autoOne.transitionValues[i])
+}
+*/
+
 
 //Checks if removeNode works
 //autoOne.removeNode(1)
 
 //Adds a node post removal to ensure that the proper nodeID is being used
 //autoOne.addNode(0, 30.77, 70.34)
-//autoOne.printNodes()
+autoOne.printNodes()
