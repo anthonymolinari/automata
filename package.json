@@ -15,6 +15,8 @@
     "@mui/material": "^5.11.16",
     "@tauri-apps/api": "^1.2.0",
     "framer-motion": "^10.10.0",
+    "gojs": "^2.3.5",
+    "gojs-react": "^1.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-flow": "^1.0.3",

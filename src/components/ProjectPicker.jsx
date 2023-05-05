@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Stack, Box, Paper, Button, Typography } from '@mui/material';
+import { useContext, useEffect, useState } from 'react';
+import { Stack, Paper, Button } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { getProjects } from '../services/filesystem_ops';
+import { getProjects, openProject } from '../services/filesystem_ops';
+
+import { GlobalContext } from '../context/GlobalState';
 
 import '../styles/ProjectPicker.css';
+
+import { automaton } from '../models/automata';
 
 const Item = styled(Paper)(({ theme }) => ({
     backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -13,20 +17,37 @@ const Item = styled(Paper)(({ theme }) => ({
     color: theme.palette.text.secondary,
 }));
 
-export default function ProjectPicker(props) {
+export default function ProjectPicker() {
     const [projects, setProjects] = useState([]);
-    
+
+    const { setActiveProject, setActiveView, setStateMachine } = useContext(GlobalContext);
+
     useEffect(() => {
         // retrive list of project files from the filesystem
         getProjects().then( (data) => {
+            console.log(data);
             setProjects(data);
         })
     }, [])
 
     const handleSelect = (event) => {
-        event.preventDefault();
+        // open project from path
+        openProject(event.target.value)
+            .then( data => {
+                console.log(data)
+                setActiveProject(data);
+                // convert to internal ds
+                setStateMachine(automaton.loads(data['data']));
+                setActiveView('editor'); // switch view to editor        
+            }).catch( error => {
+                console.log(error);
+            });
 
-        console.log(event.target.value);
+    }
+
+    if (projects.length < 1) {
+        // redirect to 
+        console.log('no projects... redirecting to create project view'); 
     }
 
     return (
@@ -36,9 +57,10 @@ export default function ProjectPicker(props) {
                 {projects.map((project) => (
                     <Item key={project.name+project.path}>
                         {project.name}
-                        <Button onClick={handleSelect} value={project.name}>Open</Button>
+                        <Button 
+                        onClick={handleSelect} value={project.name}>Open</Button>
                         <br/>
-                        PATH: {project.path}
+                        {/* PATH: {project.path} */}
                     </Item>
                 ))}
             </Stack>

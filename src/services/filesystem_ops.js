@@ -33,11 +33,7 @@ export async function createNewProjectFiles(projectName) {
     // create scaffolding for the project file
     const date = new Date();
     const scaffolding = {
-        "data": {
-            "graph": [],
-            "labels": [],
-            "regex": ""
-        },
+        "data": {},
         "meta": {
             "projectname": `${projectName}`,
             "date_created": `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
@@ -61,22 +57,25 @@ export async function createNewProjectFiles(projectName) {
 
 // open, read contents of project file and returns as json
 export async function openProject(projectName) {
-    let contents = {};
-    try {
-        const raw = await readTextFile(`${projectDir}/${projectName}.json`, {
+    return new Promise( (resolve, reject) => {
+        readTextFile(`${projectDir}/${projectName}`, {
             dir: BaseDirectory.Document
-        });
-    } catch (e) {
-        console.log(e);
-    }
-    contents = JSON.parse(raw);
-    return contents;
+        }).then( (value) => {
+            let json_data = JSON.parse(value);
+            resolve(json_data);
+        }).catch( (error) => {
+            reject(error);
+        })
+    })
 }
 
-
+/*
 export async function saveProject(projectName, content) {
-
+    return new Promise( (resolve, reject) => {
+        resolve(null);
+    })
 }
+*/
 
 // retuns a list of project files from the projects directory
 export async function getProjects() {

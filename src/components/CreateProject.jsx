@@ -11,7 +11,7 @@
         - rewrite using material UI
 */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 
 import { TextField, Button, Paper, Box, Typography } from '@mui/material';
 
@@ -21,6 +21,7 @@ import { documentDir } from '@tauri-apps/api/path';
 import { createNewProjectFiles } from '../services/filesystem_ops';
 import styled from '@emotion/styled';
 
+import { GlobalContext } from '../context/GlobalState';
 
 const Item = styled(Paper)(({ theme }) => ({
     // ...theme.typography.body2,
@@ -36,6 +37,8 @@ export default function CreateProjectPage(props) {
     const projectsDir = 'AutomataProjects'; // load from config later
     const [projectName, setProjectName] = useState('untiled');
 
+    const { setActiveView } = useContext(GlobalContext);
+    
     useEffect(() => {
         documentDir().then( (path) => {
             setBasePath(path);
@@ -65,7 +68,10 @@ export default function CreateProjectPage(props) {
                 title: 'Error',
                 type: 'error'
             });
+            return;
         }
+        // if project is created successfully switch to project selection
+        setActiveView('open_project');
     }
 
     return (
