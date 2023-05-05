@@ -2,15 +2,15 @@ import { listen } from '@tauri-apps/api/event';
 import { useState } from 'react';
 
 import CreateProjectPage from "./components/CreateProject";
-import DragNodeExample from "./components/motion/DragNodeExmaple";
 import ProjectPicker from "./components/ProjectPicker";
+import Editor from "./pages/EditorPage";
 
 // use context api to set current project w/ data
 
 const views = [
   {name: 'open_project', component: <ProjectPicker/>},
   {name: 'new_project', component: <CreateProjectPage/>},
-  {name: 'editor', component: <DragNodeExample/>}
+  {name: 'editor', component: <Editor/>}
 ];
 
 function App() {
