@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { GlobalContext } from './GlobalState';
 
+import { automaton } from '../models/automata';
+
 export default function GlobalProvider({ children }) {
     // stores the active project as automaton object
     const [ activeProject, setActiveProject ] = useState(Object);
@@ -10,12 +12,17 @@ export default function GlobalProvider({ children }) {
     // view, when application is first starting
     const [ activeView, setActiveView ] = useState('open_project');
 
+
+    const [ stateMachine, setStateMachine ] = useState(new automaton()); 
+
     return (
         <GlobalContext.Provider value={{ 
             activeProject, 
             setActiveProject,
             activeView, 
             setActiveView,
+            stateMachine,
+            setStateMachine,
         }}>
             {children}
         </GlobalContext.Provider>

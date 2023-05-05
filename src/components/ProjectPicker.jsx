@@ -7,6 +7,8 @@ import { GlobalContext } from '../context/GlobalState';
 
 import '../styles/ProjectPicker.css';
 
+import { automaton } from '../models/automata';
+
 const Item = styled(Paper)(({ theme }) => ({
     backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
     ...theme.typography.body2,
@@ -18,7 +20,7 @@ const Item = styled(Paper)(({ theme }) => ({
 export default function ProjectPicker() {
     const [projects, setProjects] = useState([]);
 
-    const { setActiveProject, setActiveView } = useContext(GlobalContext);
+    const { setActiveProject, setActiveView, setStateMachine } = useContext(GlobalContext);
 
     useEffect(() => {
         // retrive list of project files from the filesystem
@@ -34,12 +36,13 @@ export default function ProjectPicker() {
             .then( data => {
                 console.log(data)
                 setActiveProject(data);
+                // convert to internal ds
+                setStateMachine(automaton.loads(data['data']));
                 setActiveView('editor'); // switch view to editor        
             }).catch( error => {
                 console.log(error);
             });
 
-//        setActiveView('editor'); // switch view to editor        
     }
 
     if (projects.length < 1) {

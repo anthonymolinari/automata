@@ -33,11 +33,7 @@ export async function createNewProjectFiles(projectName) {
     // create scaffolding for the project file
     const date = new Date();
     const scaffolding = {
-        "data": {
-            "graph": [],
-            "labels": [],
-            "regex": ""
-        },
+        "data": {},
         "meta": {
             "projectname": `${projectName}`,
             "date_created": `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
@@ -73,10 +69,13 @@ export async function openProject(projectName) {
     })
 }
 
-
+/*
 export async function saveProject(projectName, content) {
-
+    return new Promise( (resolve, reject) => {
+        resolve(null);
+    })
 }
+*/
 
 // retuns a list of project files from the projects directory
 export async function getProjects() {
