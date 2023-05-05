@@ -1,35 +1,11 @@
-import { listen } from '@tauri-apps/api/event';
-import { useState } from 'react';
-
-import CreateProjectPage from "./components/CreateProject";
-import ProjectPicker from "./components/ProjectPicker";
-import Editor from "./pages/EditorPage";
-
-// use context api to set current project w/ data
-
-const views = [
-  {name: 'open_project', component: <ProjectPicker/>},
-  {name: 'new_project', component: <CreateProjectPage/>},
-  {name: 'editor', component: <Editor/>}
-];
+import Window from './components/Window';
+import GlobalProvider from './context/GlobalProvider';
 
 function App() {
-  const [view, setView] = useState(views[0]);
-  // event listener for menu
-  listen('menu', (event) => {
-    console.log(`menu event on (${event.windowLabel}): ${event.payload}`);
-    // update view according to event
-    views.find((v) => {
-      if (v.name == event.payload) {
-        setView(v);
-      }
-    })
-  });
-
   return (
-    <div className="container">
-      {view.component}
-    </div>
+      <GlobalProvider>
+        <Window />
+      </GlobalProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 
-//import { GlobalContext } from '../context/GlobalState';
+import { GlobalContext } from '../context/GlobalState';
 import Flow from "../components/editor/Flow/Flow.jsx";
 
 // place holder for project editor
@@ -9,12 +9,12 @@ import Flow from "../components/editor/Flow/Flow.jsx";
 
 export default function Editor() {
 
-    //const { activeProject } = useContext(GlobalContext);
+    const { activeProject } = useContext(GlobalContext);
     const [ projectName, setProjectName ] = useState('');
 
     useEffect(() => {
-        //setProjectName(activeProject.meta.projectname);
-        //console.log(`showing editor for project: ${activeProject.meta.projectname}`);
+        setProjectName(activeProject.meta.projectname);
+        console.log(`showing editor for project: ${activeProject.meta.projectname}`);
     }, []);
 
     if (activeProject === '' || activeProject === undefined ) {

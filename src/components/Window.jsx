@@ -48,7 +48,7 @@ export default function Window() {
   }   
   // else 
   return (
-    <div className="window-container">
+    <div className="window-container" style={{width: '97vw',height: '97vh'}}>
         {views.find((v) => v.name === activeView).component}
     </div>
   )
