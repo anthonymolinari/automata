@@ -14,6 +14,7 @@
     "@emotion/styled": "^11.10.6",
     "@mui/material": "^5.11.16",
     "@tauri-apps/api": "^1.2.0",
+    "d3": "^7.8.4",
     "framer-motion": "^10.10.0",
     "gojs": "^2.3.5",
     "gojs-react": "^1.1.2",
