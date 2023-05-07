@@ -284,8 +284,8 @@ export class automaton {
         for (let iter = 0; (iter < limiter && iter < this.listOfNodes.length); iter++) {
             console.log("====================")
             console.log(`Node ${iter + 1}`)
-            console.log("X Pos: ", this.listOfNodes[iter].xPosition, "")
-            console.log("Y Pos: ", this.listOfNodes[iter].yPosition, "")
+            console.log("X Pos: ", this.listOfNodes[iter].cx, "")
+            console.log("Y Pos: ", this.listOfNodes[iter].cy, "")
             console.log("nodID: ", this.listOfNodes[iter].nodeID, "")
             console.log("noTpe: ", this.listOfNodes[iter].identity, "")
             console.log("--------------------")
@@ -313,8 +313,8 @@ export class automaton {
 
 export class node {
     constructor(x, y, id, iden) {
-        this.xPosition = x,
-        this.yPosition = y,
+        this.cx = x,
+        this.cy = y,
         //Rules refer to where the node points to and
         //  what transition that occurs on
         this.rules = [],
