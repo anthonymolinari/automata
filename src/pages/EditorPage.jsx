@@ -35,21 +35,74 @@ const generateDFA = () => {
     //Link the top nodes to the bottom nodes
     autoOne.updateLink(0, 2, 'b', 1)
     autoOne.updateLink(1, 3, 'b', 1)
-    
-    return autoOne.serialize();
+
+    console.log("unparsed", autoOne);
+    return autoOne;
+    // return autoOne.serialize();
 }
 
 function DrawGraph() {
     
-    let jsonDFA = JSON.parse(generateDFA());
+    let jsonDFA = generateDFA() 
     console.log(jsonDFA);
 
     const ref = useD3((svg) => {
         svg.attr("width", "100%")
             .attr("height", "100%")
             .style("border", "1px solid black");
-        const radius = 30;
+        const radius = 40;
+        const height = 500;
+        const width = 400;
 
+        const node_group = svg.selectAll("g")
+            .data(jsonDFA.listOfNodes)
+            .enter()
+            .append("g")
+            .attr("class", "node")
+            .attr("id", d => d.nodeID)
+            .attr("transform", d => `translate(${100},${d.cy})`);
+
+        node_group.append("circle")
+            .attr("r", radius)
+            .attr("id", d => d.nodeID)
+            .attr("fill", d => {
+                if ( d.identity === 1)
+                    return 'blue';
+                if ( d.identity === 2)
+                    return 'green';
+                return 'orange';
+            })
+            .attr("stroke", "black")
+            .attr("stroke-width", 2)
+            .attr("pointer-events", "none");
+
+        node_group.append("text")
+            .text( d => `q${d.nodeID}`)
+            .attr("dx", 6)
+            .attr("dy", ".35em")
+
+        node_group.append("rect")
+            .attr("width", radius)
+            .attr("height", radius)
+            .attr("fill", "transparent")
+            .attr("pointer-event", "all")
+            .call(d3.drag().on("drag", dragUpdate));
+
+
+
+        function dragUpdate(event, d) {
+            console.log(event);
+            const nx = event.x + event.dx;
+            const ny = event.y + event.dy;
+
+            d3.selectAll(`g[id='${d.nodeID}']`)
+                .attr("transform", `translate(${event.sourceEvent.x},${event.sourceEvent.y})`);
+        }
+
+
+       /* 
+
+        // working draggable nodes that update data structure
         const nodes = svg.selectAll("circle")
             .data(jsonDFA.listOfNodes)
             .enter()
@@ -58,19 +111,27 @@ function DrawGraph() {
             .attr("cx", d => d.cx)
             .attr("cy", d => d.cy)
             .attr("r", radius)
-            .attr("fill", "orange")
+            .attr("fill", d => {
+                switch (d.identity) {
+                    case 0: // non-terminal 
+                        return "orange";
+                    case 1: // starting state
+                        return "blue";
+                    case 2: // terminal state
+                        return "green";
+                }
+            })          
             .call(d3.drag().on("drag", (event, d) => {
                 d3.selectAll(`circle[id='${d.nodeID}']`)
                     .attr("cx", event.x + event.dx)
                     .attr("cy", event.y + event.dy);
-            }));
-        
-        
+            }))
+        */    
 
     }, [jsonDFA]);
 
     return (
-        <svg ref={ref} style={{ height: '90vh', width: '90vw'}} ></svg>
+        <svg ref={ref} style={{ height: '95vh', width: '95vw'}} ></svg>
     );
 }
 
