@@ -66,11 +66,21 @@ function DrawGraph() {
             .attr("r", radius)
             .attr("id", d => d.nodeID)
             .attr("fill", d => {
-                if ( d.identity === 1)
-                    return 'blue';
-                if ( d.identity === 2)
-                    return 'green';
-                return 'orange';
+                if ( d.identity === 1) {// starting state
+                
+
+                    return 'blue'; 
+                }
+                if ( d.identity === 2) { // terminal
+                    d3.select(`g[id='${d.nodeID}'`)
+                        .append("circle")
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 2)
+                        .attr("r", radius-10)
+                        .attr("fill", "transparent");
+                    return 'green'; 
+                }
+                return 'orange'; // else non-terminal
             })
             .attr("stroke", "black")
             .attr("stroke-width", 2)
@@ -78,25 +88,23 @@ function DrawGraph() {
 
         node_group.append("text")
             .text( d => `q${d.nodeID}`)
-            .attr("dx", 6)
-            .attr("dy", ".35em")
+            .attr("text-anchor", "middle")
 
         node_group.append("rect")
-            .attr("width", radius)
-            .attr("height", radius)
+            .attr("width", radius*2)
+            .attr("height", radius*2)
+            .attr("x", -1 * radius)
+            .attr("y", -1 * radius)
             .attr("fill", "transparent")
             .attr("pointer-event", "all")
             .call(d3.drag().on("drag", dragUpdate));
 
 
-
         function dragUpdate(event, d) {
             console.log(event);
-            const nx = event.x + event.dx;
-            const ny = event.y + event.dy;
-
             d3.selectAll(`g[id='${d.nodeID}']`)
                 .attr("transform", `translate(${event.sourceEvent.x},${event.sourceEvent.y})`);
+
         }
 
 
