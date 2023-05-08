@@ -4,11 +4,10 @@ class automaton {
         this.listOfNodes = []
         this.copyOfListOfNodes = []
         this.transitionValues = []
-        this.connections = [{
-            origin: 0,
-            destination: 0,
-            parameter: ''
-        }]
+
+        //Contains a list of all the unique rules for
+        //  simplifying the building of the edges
+        this.connectionList = []
         this.regularExpression = ""
 
         //This will decide if the automaton is a
@@ -17,6 +16,35 @@ class automaton {
         //1: DFA
         //2: NFA
         this.automatonType = 0
+    }
+
+    buildConnection(origin, destination, parameter) {
+        for (let iter = 0; iter < this.connectionList.length; iter++) {
+            if (this.connectionList[iter].origin === origin && 
+                this.connectionList[iter].destination === destination && 
+                this.connectionList[iter].parameter === parameter) {
+                //If the new connection isn't going to be unique. don't add
+                return
+            }
+        }
+
+        let connection = {
+            origin,
+            destination,
+            parameter
+        }
+        this.connectionList.push(connection)
+    }
+
+    removeConnection(origin, destination, parameter) {
+        for (let iter = 0; iter < this.connectionList.length; iter++) {
+            if (this.connectionList[iter].origin === origin && 
+                this.connectionList[iter].destination === destination && 
+                this.connectionList[iter].parameter === parameter) {
+                this.connectionList.splice(iter , 1)
+                break
+            }
+        }
     }
 
     //Tells if the Automaton is a DFA or NFA 
@@ -166,6 +194,7 @@ class automaton {
         for (let iter = 0; iter < this.listOfNodes[nodeIdx].rules.length; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
             let command = this.statementParser(this.listOfNodes[nodeIdx].rules[iter])
+            this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
 
             //Remove the statement from any node linked to this node
             //Check if it's not a self loop statement
@@ -198,6 +227,7 @@ class automaton {
         
         switch(operationFlag) {
             case 1:
+                this.buildConnection(origin, destination, parameter)
                 //Create the rule for the node to be added
                 for(let iter = 0; iter < this.listOfNodes.length; iter++) {
                     if (this.listOfNodes[iter].nodeID === parseInt(origin)) {
@@ -223,6 +253,7 @@ class automaton {
                 this.determineState()
                 break
             case 2:
+                this.removeConnection(origin, destination, parameter)
                 //Clear the rules out of the node to be removed
                 for(let iter = 0; iter < this.listOfNodes.length; iter++) {
                     if (this.listOfNodes[iter].nodeID === parseInt(origin)) {
@@ -423,6 +454,7 @@ class automaton {
                 //Check if the statement points to the node that is going
                 // to be removed
                 this.updateLink(command[0], command[1], command[2], 2)
+                this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
                 if (parseInt(command[1]) === nodeGroups[iter][1]) {
                     //If so, make the command a looping statement
                     command[1] = command[0]
@@ -434,7 +466,8 @@ class automaton {
 
             //Update the rules of the non-removed node
             for (let innerIter = 0; innerIter < rules.length; innerIter++) {
-                this.updateLink(rules[innerIter][0], rules[innerIter][1], rules[innerIter][2], 1)
+                this.buildConnection(parseInt(rules[innerIter][0]), parseInt(rules[innerIter][1]), rules[innerIter][2])
+                this.updateLink(parseInt(rules[innerIter][0]), parseInt(rules[innerIter][1]), rules[innerIter][2], 1)
             }
 
             //Clear out rules for the next repeat
@@ -824,8 +857,22 @@ for (let i = 0; i < autoOne.transitionValues.length; i++ ) {
 //autoOne.addNode(0, 30.77, 70.34)
 //autoOne.printNodes()
 
+/*
+autoOne.buildConnection(1, 0, 'a')
+autoOne.buildConnection(0, 1, 'a')
+//autoOne.removeConnection(0, 1, 'a')
+
+console.log(autoOne.connectionList[0])
+console.log(autoOne.connectionList[1])
+*/
+
+//connectionList should work as the top list of all connections
+console.log(autoOne.connectionList)
+
+/*
 //Should perform conversion without need of inputs (All internal)
 autoOne.convertToRegularExpression()
 console.log(autoOne.regularExpression)
 console.log("============================")
 autoOne.printNodes()
+*/
