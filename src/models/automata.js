@@ -108,6 +108,7 @@ export class automaton {
         }
         //Default the node to Non-terminal
         this.listOfNodes.push(new node(xPos, yPos, nodeId, 0))
+        return nodeId;
     }
 
     //Update the nodes identity

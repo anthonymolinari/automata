@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
+import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, DialogContentText, MenuItem, Select } from '@mui/material';
 
 import { GlobalContext } from '../context/GlobalState';
 
@@ -7,8 +8,7 @@ import * as d3 from 'd3';
 
 import { automaton } from '../models/automata';
 
-
-const generateDFA = () => {
+function generateDFA() {
     //Testing
     const autoOne = new automaton("Test 1") //Dummy Name   
     //Test DFA structure (its also an NFA by virtue)
@@ -38,37 +38,35 @@ const generateDFA = () => {
 
     console.log("unparsed", autoOne);
     return autoOne;
-    // return autoOne.serialize();
 }
 
 function DrawGraph() {
-    
-    let jsonDFA = generateDFA() 
-    console.log(jsonDFA);
+    const [ doUpdate, setDoUpdate ] = useState(false);
+
+    const { stateMachine } = useContext(GlobalContext);
+    const [ open, setOpen ] = useState(false);
 
     const ref = useD3((svg) => {
         svg.attr("width", "100%")
             .attr("height", "100%")
             .style("border", "1px solid black");
         const radius = 40;
-        const height = 500;
-        const width = 400;
 
         const node_group = svg.selectAll("g")
-            .data(jsonDFA.listOfNodes)
+            .data(stateMachine.listOfNodes)
             .enter()
             .append("g")
             .attr("class", "node")
             .attr("id", d => d.nodeID)
-            .attr("transform", d => `translate(${100},${d.cy})`);
+            .attr("transform", d => `translate(${d.cx},${d.cy})`);
 
         node_group.append("circle")
             .attr("r", radius)
             .attr("id", d => d.nodeID)
             .attr("fill", d => {
                 if ( d.identity === 1) {// starting state
-                
-
+                    d3.select(`g[id='${d.nodeID}'`)
+                        .append("polygon")
                     return 'blue'; 
                 }
                 if ( d.identity === 2) { // terminal
@@ -99,63 +97,89 @@ function DrawGraph() {
             .attr("pointer-event", "all")
             .call(d3.drag().on("drag", dragUpdate));
 
-
         function dragUpdate(event, d) {
             console.log(event);
             d3.selectAll(`g[id='${d.nodeID}']`)
                 .attr("transform", `translate(${event.sourceEvent.x},${event.sourceEvent.y})`);
-
+            // update x,y in dfa
         }
 
 
-       /* 
+    }, [stateMachine, doUpdate]);
 
-        // working draggable nodes that update data structure
-        const nodes = svg.selectAll("circle")
-            .data(jsonDFA.listOfNodes)
-            .enter()
-            .append('circle')
-            .attr("id", d => d.nodeID)
-            .attr("cx", d => d.cx)
-            .attr("cy", d => d.cy)
-            .attr("r", radius)
-            .attr("fill", d => {
-                switch (d.identity) {
-                    case 0: // non-terminal 
-                        return "orange";
-                    case 1: // starting state
-                        return "blue";
-                    case 2: // terminal state
-                        return "green";
-                }
-            })          
-            .call(d3.drag().on("drag", (event, d) => {
-                d3.selectAll(`circle[id='${d.nodeID}']`)
-                    .attr("cx", event.x + event.dx)
-                    .attr("cy", event.y + event.dy);
-            }))
-        */    
+    function addNode() { 
+        let newNodeId = stateMachine.addNode(200, 200);
+        stateMachine.updateIdentity(newNodeId,0);
+        console.log("added new node", newNodeId);
+        setDoUpdate(!doUpdate);
+    }
 
-    }, [jsonDFA]);
+    function saveChanges(event) {
+        event.preventDefaults();
+
+
+    }
+    
+    function updateTransistion() {
+
+    }
+
+    const handleOpen = () => {
+        setOpen(true);
+        setDoUpdate(!doUpdate);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setDoUpdate(!doUpdate);
+    }
 
     return (
-        <svg ref={ref} style={{ height: '95vh', width: '95vw'}} ></svg>
+        <>
+        <div className="editor-container">
+            <div className="editor-toolbar">
+                <Button onClick={addNode}>+ node</Button>
+                <Button onClick={handleOpen}>+/- transistions</Button>
+            </div>
+            <svg ref={ref} style={{ height: '95vh', width: '95vw'}} ></svg>
+        </div>
+        <div> 
+            <Dialog open={open} onClose={handleClose}>
+                <DialogTitle>Transistions</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Add, remove, & edit transistions
+                    </DialogContentText>
+                    <Select label="From">
+                        <MenuItem value={0}>{`q${0}`}</MenuItem>
+                    </Select>
+                    <TextField variant="outlined"/>
+                    <Select label="From">
+                        <MenuItem value={0}>{`q${0}`}</MenuItem>
+                    </Select>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose}>Close</Button>
+                    <Button onClick={updateTransistion}>Save</Button>
+                </DialogActions>
+            </Dialog>
+        </div>
+        </>
     );
 }
 
 export default function Editor() {
 
-    const { activeProject } = useContext(GlobalContext);
-    const [ projectName, setProjectName ] = useState('');
-
+    const { activeProject, setStateMachine, stateMachine } = useContext(GlobalContext);  
+    
     useEffect(() => {
-        setProjectName(activeProject.meta.projectname);
         console.log(`showing editor for project: ${activeProject.meta.projectname}`);
-    }, []);
+        setStateMachine(generateDFA());
+    }, [activeProject]);
 
     if (activeProject === '' || activeProject === undefined ) {
         console.log('FROM EDITOR -> no project selected');
-            
+        return (<span>loading..</span>);    
     }
 
     return (
