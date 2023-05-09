@@ -1,9 +1,13 @@
-
 class automaton {
     constructor(name) {
         this.autoName = name,
         this.listOfNodes = []
+        this.copyOfListOfNodes = []
         this.transitionValues = []
+
+        //Contains a list of all the unique rules for
+        //  simplifying the building of the edges
+        this.connectionList = []
         this.regularExpression = ""
 
         //This will decide if the automaton is a
@@ -12,6 +16,35 @@ class automaton {
         //1: DFA
         //2: NFA
         this.automatonType = 0
+    }
+
+    buildConnection(origin, destination, parameter) {
+        for (let iter = 0; iter < this.connectionList.length; iter++) {
+            if (this.connectionList[iter].origin === origin && 
+                this.connectionList[iter].destination === destination && 
+                this.connectionList[iter].parameter === parameter) {
+                //If the new connection isn't going to be unique. don't add
+                return
+            }
+        }
+
+        let connection = {
+            origin,
+            destination,
+            parameter
+        }
+        this.connectionList.push(connection)
+    }
+
+    removeConnection(origin, destination, parameter) {
+        for (let iter = 0; iter < this.connectionList.length; iter++) {
+            if (this.connectionList[iter].origin === origin && 
+                this.connectionList[iter].destination === destination && 
+                this.connectionList[iter].parameter === parameter) {
+                this.connectionList.splice(iter , 1)
+                break
+            }
+        }
     }
 
     //Tells if the Automaton is a DFA or NFA 
@@ -36,6 +69,8 @@ class automaton {
         let origin = 0
         let destination = 0
         let parameter = ""
+        let startSlice = 0
+        let endSlice = statement.length - 1
 
         for (let iter = 0; iter < statement.length; iter++) {
             if (statement[iter] != "{" && statement[iter] != "}" && statement[iter] != "," && statement[iter] != " ") {
@@ -49,7 +84,11 @@ class automaton {
                         operationFlag++
                         break
                     case 2:
-                        parameter = statement[iter]
+                        startSlice = iter
+                        //substr takes a starting position and the number of chars to
+                        //  copy over
+                        parameter = statement.substr(5, endSlice - startSlice)
+                        iter = endSlice
                         operationFlag++
                         break
                     default:
@@ -57,7 +96,7 @@ class automaton {
                 }
             }
         }
-
+        
         return [origin, destination, parameter]
     }
 
@@ -113,42 +152,66 @@ class automaton {
 
     //Update the nodes identity
     updateIdentity(nodeId, nodeIden) {
-        this.listOfNodes[nodeId].identity = nodeIden
+        for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+            if (this.listOfNodes[iter].nodeID === nodeId) {
+                this.listOfNodes[iter].identity = nodeIden
+                break
+            }
+        }
     }
 
-    //"Deletes" a node by clearing all the data within./lo
+    //"Deletes" a node by clearing all the data within.
     removeNode(nodeID) {
+        //Find the correct index of listOfNodes
+        let nodeIdx = 0
+        for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+            if (this.listOfNodes[iter].nodeID === nodeID) {
+                nodeIdx = iter
+                break
+            }
+        }
         //Clear out all the statements from linkedRules
-        for (let iter = 0; iter < this.listOfNodes[nodeID].linkedRules.length; iter++) {
+        for (let iter = 0; iter < this.listOfNodes[nodeIdx].linkedRules.length; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
-            let command = this.statementParser(this.listOfNodes[nodeID].linkedRules[iter])
+            let command = this.statementParser(this.listOfNodes[nodeIdx].linkedRules[iter])
             //console.log(this.listOfNodes[nodeID].linkedRules[iter]) //DEBUG printout
 
             //Remove the statement from any node linked to this node
             //Check if it's not a self loop statement
             if (command[0] != command[1]) {
                 //In Linked Rules, command[0] is the node we want to alter
-                this.listOfNodes[command[0]].removeRule(this.listOfNodes[nodeID].linkedRules[iter])
+                for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                    if (this.listOfNodes[iter].nodeID === parseInt(command[0])) {
+                        this.listOfNodes[command[0]].removeRule(this.listOfNodes[nodeIdx].linkedRules[iter])
+                        break
+                    }
+                }
             }
             this.updateTransitionValues(command[2], 2)
         }
 
         //Clear out all the statements from Rules
-        for (let iter = 0; iter < this.listOfNodes[nodeID].rules.length; iter++) {
+        for (let iter = 0; iter < this.listOfNodes[nodeIdx].rules.length; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
-            let command = this.statementParser(this.listOfNodes[nodeID].rules[iter])
+            let command = this.statementParser(this.listOfNodes[nodeIdx].rules[iter])
+            this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
 
             //Remove the statement from any node linked to this node
             //Check if it's not a self loop statement
             if (command[0] != command[1]) {
                 //In Rules, command[1] is the node we want to alter
-                this.listOfNodes[command[1]].removeLinkedRule(this.listOfNodes[nodeID].rules[iter])
+                for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                    if (this.listOfNodes[iter].nodeID === parseInt(command[1])) {
+                        this.listOfNodes[iter].removeLinkedRule(this.listOfNodes[nodeIdx].rules[iter])
+                        break
+                    }
+                }
             }
             this.updateTransitionValues(command[2], 2)
         }
         
         //Final action to do
-        this.listOfNodes.splice(nodeID, 1);
+        this.listOfNodes.splice(nodeIdx, 1);
     }
 
     //Updates the link between nodes by getting the Origin, the
@@ -164,11 +227,25 @@ class automaton {
         
         switch(operationFlag) {
             case 1:
+                this.buildConnection(origin, destination, parameter)
                 //Create the rule for the node to be added
-                this.listOfNodes[origin].makeRule(command)
+                for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                    if (this.listOfNodes[iter].nodeID === parseInt(origin)) {
+                        this.listOfNodes[iter].makeRule(command)
+                        break
+                    }
+                }
+
+                //this.listOfNodes[origin].makeRule(command)
                 if (origin != destination) {
                     //Create any linked rules from other nodes pointing to this node
-                    this.listOfNodes[destination].makeLinkedRule(command)
+                    for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                        if (this.listOfNodes[iter].nodeID === parseInt(destination)) {
+                            this.listOfNodes[iter].makeLinkedRule(command)
+                            break
+                        }
+                    }
+                    //this.listOfNodes[destination].makeLinkedRule(command)
                 }
 
                 //Perform book keeping
@@ -176,11 +253,24 @@ class automaton {
                 this.determineState()
                 break
             case 2:
+                this.removeConnection(origin, destination, parameter)
                 //Clear the rules out of the node to be removed
-                this.listOfNodes[origin].removeRule(command)
+                for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                    if (this.listOfNodes[iter].nodeID === parseInt(origin)) {
+                        this.listOfNodes[iter].removeRule(command)
+                        break
+                    }
+                }
+                //this.listOfNodes[origin].removeRule(command)
                 if (origin != destination) {
                     //Clear any linked rules from other nodes pointing to this node
-                    this.listOfNodes[destination].removeLinkedRule(command)
+                    for(let iter = 0; iter < this.listOfNodes.length; iter++) {
+                        if (this.listOfNodes[iter].nodeID === parseInt(destination)) {
+                            this.listOfNodes[iter].removeLinkedRule(command)
+                            break
+                        }
+                    }
+                    //this.listOfNodes[destination].removeLinkedRule(command)
                 }
 
                 //Perform book keeping
@@ -262,22 +352,293 @@ class automaton {
         return transitionTable
     }
 
-    //Not needed, might be deleted at a later date
-    /*
-    returnValidID() {
-        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
-            if (this.listOfNodes[iter].nodeID === iter) {
-                //Do nothing
-            }
-            else { //There is a missing node
-                return iter;
+    //There is almost certainly a MUCH better solution to this
+    //  but I have no idea, currently O(n^3) but might be reducible
+    //  to O(n^2) or lower
+    //!!!Perform more testing to ensure this works!!!
+    simplifyDFA() {
+        //Check if the Automaton is a DFA
+        if (this.automatonType != 1) {
+            console.log("Error: DFA not detected")
+            return;            
+        }
+
+        let table = this.buildTable()
+        let tableLocation = []
+        let equalNodes = []
+
+        //Find the location of all the nodes (Might not be needed)
+        for (let iter = 1; iter < table.length; iter++) {
+            tableLocation.push([table[iter][1], table[iter][0]])
+        }
+
+        for (let iter = 1; iter < table.length; iter++) {            
+            //Check all nodes below the current node to see if any are equivalent
+            for (let innerIter = iter + 1; innerIter < table.length; innerIter++) {
+                //If equivalence becomes equal to the length of possible transitions,
+                //  then the nodes are equal
+                let equivalence = 0;
+                for (let arrIdx = 2; arrIdx < table[innerIter].length; arrIdx++) {
+                    let valueOne = parseInt(table[iter][arrIdx])
+                    let valueTwo = parseInt(table[innerIter][arrIdx])
+                    if (valueOne === -1 || valueTwo === -1) {
+                        //Do nothing unless both are equal to -1
+                        if (valueOne === valueTwo) {
+                            equivalence++
+                        }
+                    }
+                    else {
+                        let tableValOne = -1, tableValTwo = -1, flag = 0
+                        for (let arrIdx = 0; arrIdx < tableLocation.length; arrIdx++) {
+                            if (tableLocation[arrIdx][0] === valueOne && flag != 2) {
+                                tableValOne = tableLocation[arrIdx][1]
+                                if (flag === 1) { break }
+                                flag = 2
+                            }
+                            else if (tableLocation[arrIdx][0] === valueTwo && flag != 1) {
+                                tableValTwo = tableLocation[arrIdx][1]
+                                if (flag === 2) { break }
+                                flag = 1
+                            }
+                        }
+
+                        //Fix logic here for second running
+                        if ((tableValOne === tableValTwo) || (tableValOne === 'S' && tableValTwo === 'T') 
+                        || (tableValOne === 'T' && tableValTwo === 'S')) {
+                            equivalence++
+                        }   
+                    }
+                }
+                if (equivalence === this.transitionValues.length) {
+                    //DEBUG printout
+                    //console.log("Equivalent nodes: ", iter - 1, " and ", innerIter - 1)
+                    //iter will be updated while innerIter will be removed
+                    equalNodes.push([iter - 1, innerIter - 1])
+                }
             }
         }
-        //If all nodes are accounted for, then simply 
-        // return the size for the next input
-        return this.listOfNodes.length
+
+        //Call helper function to perform the deletes and updates
+        //  This also helps to make the code more readable since it's one large
+        //  blocks broken up into two functions
+        if (equalNodes.length > 0) {
+            this.simplifyDFAHelper(equalNodes) 
+            //Simplification has occured
+            return 0
+        }
+        else {
+            //There is no more possible simplification
+            return -1 
+        }
     }
-    */
+
+    //The helper handles removing and fixing the connections between nodes
+    simplifyDFAHelper(nodeGroups) {
+        let rules = []
+
+        //Relink all affected nodes
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            //check if the node that would be removed is actually the Start node
+            //  If it is, then swap the nodes before the rest of the logic
+            if (this.listOfNodes[nodeGroups[iter][1]].identity === 1) {
+                let temp = nodeGroups[iter][0];
+                nodeGroups[iter][0] = nodeGroups[iter][1]
+                nodeGroups[iter][1] = temp
+            }
+
+            //Get the rules of the node to be updated
+            let rulesSize = this.listOfNodes[nodeGroups[iter][0]].rules.length
+            for (let innerIter = 0, leftShift = 0; innerIter < rulesSize; innerIter++, leftShift--) {
+                let command = this.statementParser(this.listOfNodes[nodeGroups[iter][0]].rules[innerIter + leftShift])
+
+                //Check if the statement points to the node that is going
+                // to be removed
+                this.updateLink(command[0], command[1], command[2], 2)
+                this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
+                if (parseInt(command[1]) === nodeGroups[iter][1]) {
+                    //If so, make the command a looping statement
+                    command[1] = command[0]
+                }
+
+                //Save the command for later user
+                rules.push([command[0],command[1], command[2]])
+            }
+
+            //Update the rules of the non-removed node
+            for (let innerIter = 0; innerIter < rules.length; innerIter++) {
+                this.buildConnection(parseInt(rules[innerIter][0]), parseInt(rules[innerIter][1]), rules[innerIter][2])
+                this.updateLink(parseInt(rules[innerIter][0]), parseInt(rules[innerIter][1]), rules[innerIter][2], 1)
+            }
+
+            //Clear out rules for the next repeat
+            rules = []
+        }
+
+        //Might not be needed any more
+        /*
+        //Relink any nodes that point to the node to be deleted
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            if (this.listOfNodes[nodeGroups[iter][1]].linkedRules.length > 0) {
+                let rulesSize = this.listOfNodes[nodeGroups[iter][1]].linkedRules.length
+                for (let innerIter = 0, leftShift = 0; innerIter < rulesSize; innerIter++, leftShift--) {
+                    let command = this.statementParser(this.listOfNodes[nodeGroups[iter][1]].linkedRules[innerIter + leftShift])
+                    this.updateLink(command[0], command[1], command[2], 2)
+                    if (parseInt(command[1]) === nodeGroups[iter][1]) {
+                        //If so, make the command a looping statement
+                        command[1] = nodeGroups[iter][0]
+                    }
+                    this.updateLink(command[0], command[1], command[2], 1)
+                }
+            }
+        }
+        */
+
+        //Remove any invalid statements from linkedRules
+        //leftShift is used to stay at the proper location within the array
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            let linkedRulesSize = this.listOfNodes[nodeGroups[iter][0]].linkedRules.length
+            for (let innerIter = 0, leftShift = 0; innerIter < linkedRulesSize; innerIter++) {
+                let command = this.statementParser(this.listOfNodes[nodeGroups[iter][0]].linkedRules[innerIter + leftShift])
+
+                if (parseInt(command[0]) === nodeGroups[iter][1]) {
+                    this.listOfNodes[nodeGroups[iter][0]].removeLinkedRule(`{${parseInt(command[0])},${parseInt(command[1])},${command[2]}}`)
+                    leftShift--
+                }
+            }
+        }
+
+        //Remove the equivalent nodes
+        for (let iter = 0; iter < nodeGroups.length; iter++) {
+            //This will miss linkedRules removals, but that that can be ignored
+            this.removeNode(nodeGroups[iter][1])
+        }
+    }
+
+    //Check if a node CAN reach a goal state, if not then remove said node
+    removeDeadStates() {
+
+    }
+
+    convertToRegularExpression() {
+        //Generate a copy of listOfNodes for being used for RE generation
+        
+        //First, remove the dead States prior to state Removal
+        this.removeDeadStates()
+        //Add two new states to convert to a General NFA
+        let startNode = 0
+        let goalIdxs = []
+        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+            //If the node is the starting position, save the index for 
+            //  the next step
+            if (this.listOfNodes[iter].identity === 1) {
+                startNode = this.listOfNodes[iter].nodeID
+            }
+            //Else if the node is a goal state, save the index in an
+            //  array for the next step (This step involves potentially 
+            //  multiple nodes that need to be changed/altered)
+            else if (this.listOfNodes[iter].identity === 2) {
+                goalIdxs.push(this.listOfNodes[iter].nodeID)
+            }
+        }
+
+        //Create the new start node
+        let newNodePos = this.listOfNodes.length
+        this.addNode(0,0)
+        //This will create the "Free" move
+        this.updateLink(this.listOfNodes[newNodePos].nodeID, startNode, 'E', 1)
+        //Update the nodes to swapped
+        this.updateIdentity(this.listOfNodes[newNodePos].nodeID, 1)
+        this.updateIdentity(startNode, 0) 
+
+        //Create the new goal node
+        newNodePos = this.listOfNodes.length
+        this.addNode(999,999)
+        this.updateIdentity(this.listOfNodes[newNodePos].nodeID, 2)
+        //Update all the goal nodes so they point to the new goal node
+        for (let iter = 0; iter < goalIdxs.length; iter++) {
+            //Create the "Free" move
+            this.updateLink(goalIdxs[iter], this.listOfNodes[newNodePos].nodeID, 'E', 1)
+            //Update the goal node to now be a terminal
+            this.updateIdentity(goalIdxs[iter], 0)
+        }
+
+        
+        //This handles the removing part of the conversion
+        while(this.listOfNodes.length > 2) {
+            //First, get the nodeIdx for listOfNodes to start removing nodes
+            let nodeToRemoveIdx = 0
+            let nodeIDToRemove = 0
+            for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+                if (this.listOfNodes[iter].identity === 0) {
+                    nodeToRemoveIdx = iter 
+                    nodeIDToRemove = this.listOfNodes[iter].nodeID
+                    break
+                }
+            }
+
+            //Now, build the In/Out table for the node that is to be removed
+            //IN is for all the linkedRules of the node (Origin)
+            //OUT is for all the rules of the node (Destination)
+            //Example:
+            //___IN___|___OUT___
+            //  1, 3  |  3, 5
+            let IN = []
+            let OUT = []
+
+            //Get all the OUT nodeIDs
+            for (let iter = 0; iter < this.listOfNodes[nodeToRemoveIdx].rules.length; iter++) {
+                let command = this.statementParser(this.listOfNodes[nodeToRemoveIdx].rules[iter])
+                OUT.push([command[1], command[2]])
+            }
+
+            //Get all the In nodeIDS
+            for (let iter = 0; iter < this.listOfNodes[nodeToRemoveIdx].linkedRules.length; iter++) {
+                let command = this.statementParser(this.listOfNodes[nodeToRemoveIdx].linkedRules[iter], 1)
+                IN.push([command[0], command[2]])
+            }
+
+            //Now, build each statement for the Regular Expression
+            for (let iterOne = 0; iterOne < IN.length; iterOne++) {
+                let statement = ''
+
+                //First flag checks the amount of lines that go from one node to either another
+                //  node or itself, in which case a + should be used
+                //Second flag checks if a variable is looping, and is incremented and decremented
+                //  for each looping variable found and updated with a *
+                let flags = [0, 0]
+                let statementPieces = []
+
+                for (let iterTwo = 0; iterTwo < OUT.length; iterTwo++) {
+                    if (parseInt(OUT[iterTwo][0]) === nodeIDToRemove) {
+                        statementPieces.push(OUT[iterTwo][1])
+                        flags[0] += 1
+                        flags[1] += 1
+                    }
+                    else {
+                        if (OUT[iterTwo][1] != 'E') {
+                            statementPieces.push(OUT[iterTwo][1])
+                        }
+
+                        if (IN[iterOne][1] != 'E') {
+                            statementPieces.push(IN[iterOne][1])
+                        }
+
+                        //Statement building logic here
+                        
+
+                        this.updateLink(IN[iterOne][0], OUT[iterTwo][0], statement, 1) 
+                        statement = ''
+                        flags = [0, 0]
+                    }
+                }
+            }
+
+            this.removeNode(nodeIDToRemove) 
+        }
+        
+        //Final "Removal" will occur when handling the last two nodes
+
+    }
 
     //The limit is high, but printing over 10k nodes is 
     // not in the scope of this project
@@ -306,8 +667,8 @@ class automaton {
 
 class node {
     constructor(x, y, id, iden) {
-        this.xPosition = x,
-        this.yPosition = y,
+        this.cx = x,
+        this.cy = y,
         //Rules refer to where the node points to and
         //  what transition that occurs on
         this.rules = [],
@@ -334,10 +695,22 @@ class node {
         //Example statements:
         // {0, 1, a}
         // {0, 0, b}
+        //check if the statement already exists
+        for (let iter = 0; iter < this.rules.length; iter++) {
+            if (statement === this.rules[iter]) {
+                return
+            }
+        }
         this.rules.push(statement)
     }
 
     makeLinkedRule(statement) {
+        //check if the statement already exists
+        for (let iter = 0; iter < this.linkedRules.length; iter++) {
+            if (statement === this.linkedRules[iter]) {
+                return
+            }
+        }
         this.linkedRules.push(statement)
     }
 
@@ -351,7 +724,7 @@ class node {
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
 
     }
 
@@ -365,7 +738,7 @@ class node {
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
     }
 }
 
@@ -426,6 +799,7 @@ autoOne.updateLink(1, 0, 'b', 1)
 //console.log(autoOne.transitionValues[0], " , " ,autoOne.transitionValues[1])
 */
 
+/*
 //Internal call to build a DFA Table
 let table = autoOne.buildTable()
 
@@ -433,13 +807,48 @@ let table = autoOne.buildTable()
 for (let i = 0; i < table.length; i++) {
     console.log(table[i])
 }
+*/
 
+/*
 //check if the Automaton is updating between being a NFA or DFA
 console.log(autoOne.automatonType)
 autoOne.updateLink(0, 2, 'a', 1)
 console.log(autoOne.automatonType)
 autoOne.updateLink(0, 2, 'a', 2)
 console.log(autoOne.automatonType)
+*/
+
+autoOne.printNodes()
+
+
+//Simplification does not re-link from other affected nodes (FIX)
+//This is what the command would look like for executing
+//  DFA - Simplification
+//===========================
+let tempVal = autoOne.simplifyDFA()
+while (tempVal != -1) {
+    tempVal = autoOne.simplifyDFA()
+}
+
+if (tempVal === -1) {
+    console.log("No more simplification possible!")
+}
+//===========================
+
+
+//Recall buildTable to check if the DFA was simplified
+let table = autoOne.buildTable()
+
+//printout for DEBUG only
+for (let i = 0; i < table.length; i++) {
+    console.log(table[i])
+}
+
+/*
+for (let i = 0; i < autoOne.transitionValues.length; i++ ) { 
+    console.log(autoOne.transitionValues[i])
+}
+*/
 
 //Checks if removeNode works
 //autoOne.removeNode(1)
@@ -447,3 +856,23 @@ console.log(autoOne.automatonType)
 //Adds a node post removal to ensure that the proper nodeID is being used
 //autoOne.addNode(0, 30.77, 70.34)
 //autoOne.printNodes()
+
+/*
+autoOne.buildConnection(1, 0, 'a')
+autoOne.buildConnection(0, 1, 'a')
+//autoOne.removeConnection(0, 1, 'a')
+
+console.log(autoOne.connectionList[0])
+console.log(autoOne.connectionList[1])
+*/
+
+//connectionList should work as the top list of all connections
+console.log(autoOne.connectionList)
+
+/*
+//Should perform conversion without need of inputs (All internal)
+autoOne.convertToRegularExpression()
+console.log(autoOne.regularExpression)
+console.log("============================")
+autoOne.printNodes()
+*/
