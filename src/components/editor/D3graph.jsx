@@ -1,7 +1,6 @@
-import { GlobalContext } from "../../context/GlobalState";
+import { useState } from 'react';
 
-
-export default function D3graph() {
+export default function D3graph(stateMachine) {
     
 
     return null;

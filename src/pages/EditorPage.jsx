@@ -47,6 +47,8 @@ function DrawGraph() {
     const { stateMachine } = useContext(GlobalContext);
     const [ open, setOpen ] = useState(false);
     const radius = 40;
+    let from_node = 0;
+    let to_node = 0;
 
     const ref = useD3((svg) => {
         svg.attr("width", "100%")
@@ -65,11 +67,22 @@ function DrawGraph() {
             .attr("orient", "auto")
             .append("path")
             .attr("d","M 0 0 L 10 5 L 0 10 z");
+
+        const label_group = svg.selectAll("text")
+            .data(concatenateEdges(stateMachine.connectionList))
+            .enter()
+            .append("text")
+            .attr("rotate","180deg")
+            .attr("dy", -5)
+            .attr("text-anchor", "middle")
+            .append("textPath")
+            .attr("href",(d,i) => `#labelPath${i}`)
+            .attr("startOffset", "50%")
+            .text(d => d.parameter);
         
         const edge_group = svg.selectAll("path.edge")
-            .data(stateMachine.connectionList)
+            .data(concatenateEdges(stateMachine.connectionList))
             .enter()
-
         
         const node_group = svg.selectAll("g")
             .data(stateMachine.listOfNodes)
@@ -105,12 +118,18 @@ function DrawGraph() {
             .attr("pointer-events", "none");
 
         edge_group.append("path")
+            .attr("id",(_,i) => `labelPath${i}`)
             .attr("class", "edge")
             .attr("stroke", "black")
             .attr("fill", "none")
             .attr("stroke-width", "2")
             .attr("marker-end", `url(#arrow)`)
-            .attr("d",(d) => DrawEdge(d));
+            .attr("d",(d) => DrawEdge(d))
+            .append("text")
+            .text( d => d.parameter)
+            .attr("text-anchor", "middle");
+            
+            
 
         node_group.append("text")
             .text( d => `q${d.nodeID}`)
@@ -134,18 +153,15 @@ function DrawGraph() {
                     node.cy = event.sourceEvent.y;
                     node.cx = event.sourceEvent.x;
                 }
-            });
-
-            
+            }); 
             d3.selectAll(`path[class='edge']`)
                 .attr("d", DrawEdge);
-
-            console.log(stateMachine);
         }
 
 
     }, [stateMachine, doUpdate]);
-    
+   
+
     const DrawEdge = (d) => {
             const      targetCx = stateMachine.listOfNodes[d.destination].cx
             const      targetCy = stateMachine.listOfNodes[d.destination].cy
@@ -153,25 +169,28 @@ function DrawGraph() {
             const      sourceCy = stateMachine.listOfNodes[d.origin].cy
 
             if(d.origin !== d.destination) {
-                const xDiff = sourceCx - targetCx
-                const yDiff = sourceCy - targetCy
-                const xFraction = Math.sign(xDiff) * Math.sqrt(Math.abs(xDiff) / (Math.abs(xDiff) + Math.abs(yDiff)) * Math.pow(radius, 2) + ((1 / 10) * Math.pow(radius, 2)))
-                const yFraction = Math.sign(yDiff) * Math.sqrt(Math.abs(yDiff) / (Math.abs(xDiff) + Math.abs(yDiff)) * Math.pow(radius, 2) - ((1 / 10) * Math.pow(radius, 2)))
+                let xDiff = sourceCx - targetCx
+                let yDiff = sourceCy - targetCy
+                const xFraction = Math.sign(xDiff) * Math.sqrt(Math.abs(xDiff) / (Math.abs(xDiff) + Math.abs(yDiff)) * Math.pow(radius, 2))
+                const yFraction = Math.sign(yDiff) * Math.sqrt(Math.abs(yDiff) / (Math.abs(xDiff) + Math.abs(yDiff)) * Math.pow(radius, 2))
                 const sourcePointX = sourceCx - xFraction
                 const sourcePointY = sourceCy - yFraction
                 const targetPointX = targetCx + xFraction
                 const targetPointY = targetCy + yFraction
                 const newXDiff = sourcePointX - targetPointX
                 const newYDiff = sourcePointY - targetPointY
-                const firstThirdX = newXDiff / 10
-                const firstThirdY = newYDiff / 10
+                const firstThirdX = newXDiff / 8
+                const firstThirdY = newYDiff / 8
                 const firstPointX = sourcePointX - firstThirdY
                 const firstPointY = sourcePointY + firstThirdX
                 const secondPointX = targetPointX - firstThirdY
                 const secondPointY = targetPointY + firstThirdX
 
+                const controlPointX = (firstPointX + secondPointX) / 2
+                const controlPointY = (firstPointY + secondPointY) / 2
+
                 return `M ${sourcePointX} ${sourcePointY} 
-                   C  ${firstPointX} ${firstPointY}, ${secondPointX} ${secondPointY}, ${targetPointX} ${targetPointY}`
+                   Q  ${controlPointX} ${controlPointY}, ${targetPointX} ${targetPointY}`
             }else{ 
                 const leftXControl = sourceCx - radius - 70;
                 const leftYControl = sourceCy - radius - 70;
@@ -185,76 +204,128 @@ function DrawGraph() {
             }
     }
 
+    const concatenateEdges = (data) => {
+        let newData = [];
+        let found = false;
+        for(let i = 0;i < data.length; i++){
+            console.log(i)
+            for(let j = 0;j < newData.length;j++){
+                if(data[i].origin == newData[j].origin && data[i].destination == newData[j].destination){
+                    newData[j].parameter = newData[j].parameter + ',' + data[i].parameter
+                    found = true;
+                    console.log("made it")
+                    break;
+                }
+            }
+            if(found == false){
+                newData.push(data[i])
+            }
+            found = false;
+        }
+        for(let i = 0;i < newData.length;i++){
+            console.log(newData[i].parameter);
+        }
+        return newData;
+    }
+
     function addNode() { 
         let newNodeId = stateMachine.addNode(200, 200);
         stateMachine.updateIdentity(newNodeId,0);
-        console.log("added new node", newNodeId);
         setDoUpdate(!doUpdate);
+    }
+    function deleteNode(event) {
+        let nodeID = event.target.value;
+        stateMachine.removeNode(nodeID);
     }
 
     function saveChanges(event) {
         event.preventDefaults();
-
-
+        // take a snapshot of the project
+        // and write it to disk
+        console.log(stateMachine);
     }
     
-    function updateTransistion() {
-
+    function createTransition(event) {
+        let edge = event.target.value;
+        statemachine.updateLink(edge.origin, edge.destination, edge.parameter, 1);
     }
 
-    const handleOpen = () => {
-        setOpen(true);
-        setDoUpdate(!doUpdate);
-    };
-
-    const handleClose = () => {
-        setOpen(false);
-        setDoUpdate(!doUpdate);
+    function deleteTransition(event) {
+        let edge= event.target.value
+        stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 2);
+        setDoUpdate(!doUpdate);   
     }
 
     return (
         <>
-        <div className="editor-container">
-            <div className="editor-toolbar">
-                <Button variant="outlined" onClick={addNode}>+ node</Button>
-                <Button variant="outlined" ></Button>
-                <Button onClick={handleOpen}>+/- transistions</Button>
-                <Button>test</Button>
-                <Button>Convert</Button>
+        <div className="editor-container"> 
+            <svg ref={ref} style={{ height: '90vh', width: '70vw'}} ></svg>
+            <div className="testing-container" style={{ flex: 'inline-block', float: 'right', background: 'lightgrey' }}>
+                <h3>Edit State Machine</h3> 
+                <div className="editor-toolbar" style={{ padding: '3px', margin: '5px' }}>
+                    <Button variant="outlined" onClick={addNode}>+ node</Button>
+                    <Button variant="outlined" >- node</Button>
+                    <Button variant="outlined" >+/- transitions</Button>
+                </div>
+                <span>Enter a string to test</span>
+                <TextField />
+                <Button></Button>
             </div>
-            <svg ref={ref} style={{ height: '90vh', width: '90vw'}} ></svg>
         </div>
         <div> 
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>Transistions</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        Add, remove, & edit transistions
-                    </DialogContentText>
-                    <ul>
-                        {stateMachine.connectionList.map((edge) => (
-                            <li>
-                                <span>from: {edge.origin}, to: {edge.destination}, on: {edge.parameter}</span><Button>Remove</Button>
-                            </li>
-                        ))}
-                    </ul>
-                    <Select label="From">
-                        <MenuItem value={0}>{`q${0}`}</MenuItem>
-                    </Select>
-                    <TextField variant="outlined"/>
-                    <Select label="From">
-                        <MenuItem value={0}>{`q${0}`}</MenuItem>
-                    </Select>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>Close</Button>
-                    <Button onClick={updateTransistion}>Save</Button>
-                </DialogActions>
-            </Dialog>
+
         </div>
         </>
     );
 }
+
+function TransitionDialog({props}) {
+    
+    const [ open, setOpen ] = useState(false);    
+
+    let { stateMachine, createTransition, deleteTransition } = props;
+
+    return (
+            <Dialog open={open} onClose={handleClose}>
+                <DialogTitle>Transitions</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Add, remove, & edit transitions
+                    </DialogContentText>
+                    <ul>
+                        {stateMachine.connectionList.map((edge) => (
+                            <li key={`li-${edge.origin}${edge.desination}${edge.parameter}`} >
+                                <span>from: {edge.origin}, to: {edge.destination}, on: {edge.parameter}</span>
+                                <Button 
+                                    key={`${edge.origin}${edge.desination}${edge.parameter}`} 
+                                    value={edge}
+                                    onClick={ e => deleteTransition(e)}
+                                >
+                                    Remove
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                    <Select label="From" value={from_node}>
+                        {stateMachine.listOfNodes.map((node) => (
+                            <MenuItem key={`from-${node.nodeID}`}value={node.nodeID}>{`q${node.nodeID}`}</MenuItem>
+                        ))}
+                    </Select>
+                    <TextField variant="outlined"/>
+                    <Select label="to" value={to_node}>
+                        {stateMachine.listOfNodes.map((node) => (
+                            <MenuItem key={`to-${node.nodeID}`} value={node.nodeID}>{`q${node.nodeID}`}</MenuItem>
+                        ))}                    
+                    </Select>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose}>Close</Button>
+                    <Button onClick={createTransition}>Save</Button>
+                </DialogActions>
+            </Dialog>
+    );
+}
+
 
 export default function Editor() {
 
