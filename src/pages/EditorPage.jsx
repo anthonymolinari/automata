@@ -43,14 +43,24 @@ function generateDFA() {
 
 function DrawGraph() {
     const [ doUpdate, setDoUpdate ] = useState(false); 
+    const [ renderedEdges, setRenderedEdges ] = useState([]);
 
     const { stateMachine } = useContext(GlobalContext);
-    const [ open, setOpen ] = useState(false);
     const radius = 40;
     let from_node = 0;
     let to_node = 0;
 
+
+    const refresh = () => {
+        setDoUpdate(!doUpdate);
+    };
+
+    useEffect(() => {
+        setRenderedEdges(concatenateEdges(stateMachine.connectionList));
+    }, [stateMachine]);
+
     const ref = useD3((svg) => {
+
         svg.attr("width", "100%")
             .attr("height", "100%")
             .style("border", "1px solid black");
@@ -69,7 +79,7 @@ function DrawGraph() {
             .attr("d","M 0 0 L 10 5 L 0 10 z");
 
         const label_group = svg.selectAll("text")
-            .data(concatenateEdges(stateMachine.connectionList))
+            .data(renderedEdges)
             .enter()
             .append("text")
             .attr("rotate","180deg")
@@ -81,7 +91,7 @@ function DrawGraph() {
             .text(d => d.parameter);
         
         const edge_group = svg.selectAll("path.edge")
-            .data(concatenateEdges(stateMachine.connectionList))
+            .data(renderedEdges)
             .enter()
         
         const node_group = svg.selectAll("g")
@@ -159,7 +169,7 @@ function DrawGraph() {
         }
 
 
-    }, [stateMachine, doUpdate]);
+    }, [stateMachine, doUpdate, renderedEdges]);
    
 
     const DrawEdge = (d) => {
@@ -202,7 +212,7 @@ function DrawGraph() {
                    C  ${leftXControl} ${leftYControl}, ${rightXControl} ${rightYControl}, ${sourceCx} ${startAndEndY}`
 
             }
-    }
+    }  
 
     const concatenateEdges = (data) => {
         let newData = [];
@@ -222,9 +232,7 @@ function DrawGraph() {
             }
             found = false;
         }
-        for(let i = 0;i < newData.length;i++){
-            console.log(newData[i].parameter);
-        }
+        console.log(newData);
         return newData;
     }
 
@@ -235,6 +243,7 @@ function DrawGraph() {
     }
     function deleteNode(event) {
         let nodeID = event.target.value;
+        console.log('deleting node', nodeID);
         stateMachine.removeNode(nodeID);
     }
 
@@ -253,7 +262,7 @@ function DrawGraph() {
     function deleteTransition(event) {
         let edge= event.target.value
         stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 2);
-        setDoUpdate(!doUpdate);   
+        setRenderedEdges(concatenateEdges(stateMachine.connectionList))
     }
 
     return (
@@ -264,12 +273,48 @@ function DrawGraph() {
                 <h3>Edit State Machine</h3> 
                 <div className="editor-toolbar" style={{ padding: '3px', margin: '5px' }}>
                     <Button variant="outlined" onClick={addNode}>+ node</Button>
-                    <Button variant="outlined" >- node</Button>
-                    <Button variant="outlined" >+/- transitions</Button>
+                    <Button variant="outlined" >+ transition</Button>
+                    <Button variant="outlined" onClick={refresh}>refresh</Button>
                 </div>
                 <span>Enter a string to test</span>
                 <TextField />
-                <Button></Button>
+                <Button>Test</Button>
+                <h3>Nodes</h3>
+                <ul style={{ listStyle: 'none', paddingLeft: 0, marginLeft: 20 }}>
+                    {stateMachine.listOfNodes.map((node, idx) => (
+                        <li key={`${node.nodeID}-${idx}-li`} style={{ backgroundColor: (idx % 2 ? 'lightgrey' : 'white') }}>
+                            <span key={`node-span-${idx}`} >q{node.nodeID}</span>
+                            <Button key={`node-button-remove-${idx}`} onClick={deleteNode} value={node.nodeID}>remove</Button>
+                        </li>
+                    ))}
+                </ul>
+                <h3>Transitions</h3>
+                <ul style={{ listStyle: 'none', paddingLeft: 0, marginLeft: 20 }}>
+                    {stateMachine.connectionList.map((edge, idx) => (
+                        <li key={`${edge}${idx}`}style={{ backgroundColor: (idx % 2 ? 'lightgrey' : 'white') }}>
+                            <span key={`edge-span-${idx}`}>from: q{edge.origin}, to: q{edge.destination}, on: {edge.parameter}</span>
+                            <Button key={`edge-button-remove-${idx}`} onClick={deleteTransition} value={edge} >remove</Button>
+                        </li>
+                    ))}
+                </ul>
+                <h4>new transition</h4>
+                <form>
+                    <label for="from-node">from:</label>
+                    <select id="from-node" name="from-node">
+                        {stateMachine.listOfNodes.map((node) => (
+                            <option key={`from-select-option-${node.nodeID}`}>{node.nodeID}</option>
+                        ))}
+                    </select>
+                    <label for="on-value">on:</label>
+                    <input id="on-value"/>
+                    <label for="to-node">from:</label>
+                    <select id="to-node" name="to-node">
+                        {stateMachine.listOfNodes.map((node) => (
+                            <option key={`to-select-option-${node.nodeID}`}>{node.nodeID}</option>
+                        ))}
+                    </select>
+                    <input type="submit"/>
+                </form>
             </div>
         </div>
         <div> 
@@ -279,58 +324,22 @@ function DrawGraph() {
     );
 }
 
-function TransitionDialog({props}) {
-    
-    const [ open, setOpen ] = useState(false);    
+function Renderer() {
+    const { stateMachine } = useContext(GlobalContext);
 
-    let { stateMachine, createTransition, deleteTransition } = props;
+    useEffect(() => {
+
+    }, [stateMachine]);
 
     return (
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>Transitions</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        Add, remove, & edit transitions
-                    </DialogContentText>
-                    <ul>
-                        {stateMachine.connectionList.map((edge) => (
-                            <li key={`li-${edge.origin}${edge.desination}${edge.parameter}`} >
-                                <span>from: {edge.origin}, to: {edge.destination}, on: {edge.parameter}</span>
-                                <Button 
-                                    key={`${edge.origin}${edge.desination}${edge.parameter}`} 
-                                    value={edge}
-                                    onClick={ e => deleteTransition(e)}
-                                >
-                                    Remove
-                                </Button>
-                            </li>
-                        ))}
-                    </ul>
-                    <Select label="From" value={from_node}>
-                        {stateMachine.listOfNodes.map((node) => (
-                            <MenuItem key={`from-${node.nodeID}`}value={node.nodeID}>{`q${node.nodeID}`}</MenuItem>
-                        ))}
-                    </Select>
-                    <TextField variant="outlined"/>
-                    <Select label="to" value={to_node}>
-                        {stateMachine.listOfNodes.map((node) => (
-                            <MenuItem key={`to-${node.nodeID}`} value={node.nodeID}>{`q${node.nodeID}`}</MenuItem>
-                        ))}                    
-                    </Select>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>Close</Button>
-                    <Button onClick={createTransition}>Save</Button>
-                </DialogActions>
-            </Dialog>
-    );
+        <DrawGraph/>
+    )
 }
-
 
 export default function Editor() {
 
-    const { activeProject, setStateMachine, stateMachine } = useContext(GlobalContext);  
-    
+    const { activeProject, setStateMachine } = useContext(GlobalContext);  
+ 
     useEffect(() => {
         console.log(`showing editor for project: ${activeProject.meta.projectname}`);
         setStateMachine(generateDFA()); // get automaton ds
@@ -342,6 +351,6 @@ export default function Editor() {
     }
 
     return (
-        <DrawGraph />
+        <Renderer />
     )
 }

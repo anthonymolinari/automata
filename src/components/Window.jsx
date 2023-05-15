@@ -8,6 +8,8 @@ import { GlobalContext } from '../context/GlobalState';
 
 import { CircularProgress, Box } from '@mui/material';
 
+import { saveProject } from '../services/filesystem_ops';
+
 const views = [
   {name: 'open_project', component: <ProjectPicker/>},
   {name: 'new_project', component: <CreateProjectPage/>},
@@ -16,7 +18,8 @@ const views = [
 ];
 
 export default function Window() {
-  const { activeView, setActiveView } = useContext(GlobalContext);
+  const { activeView, setActiveView, stateMachine } = useContext(GlobalContext);
+
 
   useEffect( () => {
     console.log('mounting main window, or did update');
@@ -33,6 +36,7 @@ export default function Window() {
     console.log(`action event on (${event.windowLabel}): ${event.payload}`);
     if (event.payload === 'save') {
       console.log('saving current project');
+      
     }
   });
 

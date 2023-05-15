@@ -8,6 +8,7 @@ import {
 } from "@tauri-apps/api/fs";
 
 const projectDir = "AutomataProjects";
+import { automaton } from "../models/automata";
 
 export async function createNewProjectFiles(projectName) {
     // check if project exists
@@ -36,7 +37,6 @@ export async function createNewProjectFiles(projectName) {
         "data": {},
         "meta": {
             "projectname": `${projectName}`,
-            "date_created": `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
         }
     };
 
@@ -61,21 +61,29 @@ export async function openProject(projectName) {
         readTextFile(`${projectDir}/${projectName}`, {
             dir: BaseDirectory.Document
         }).then( (value) => {
-            let json_data = JSON.parse(value);
-            resolve(json_data);
+            resolve(automaton.loads(JSON.parse(value)));
         }).catch( (error) => {
             reject(error);
-        })
+        });
     })
 }
 
-/*
-export async function saveProject(projectName, content) {
+// writes project content to file
+export async function saveProject(projectName, project) {
     return new Promise( (resolve, reject) => {
-        resolve(null);
+        writeTextFile({
+            contents: project.serialize(),
+            path: `${projectDir}/${projectName}.json`
+        }, {
+            dir: BaseDirectory.Document
+        }).then(() => {
+            resolve();
+        }).catch((error) => {
+            reject(error);
+        });
     })
 }
-*/
+
 
 // retuns a list of project files from the projects directory
 export async function getProjects() {
