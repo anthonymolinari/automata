@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, DialogContentText, MenuItem, Select } from '@mui/material';
 
 import { GlobalContext } from '../context/GlobalState';
@@ -45,25 +45,18 @@ function DrawGraph() {
     const [ doUpdate, setDoUpdate ] = useState(false); 
     const [ renderedEdges, setRenderedEdges ] = useState([]);
 
-    const { stateMachine } = useContext(GlobalContext);
+    const { stateMachine, setStateMachine } = useContext(GlobalContext);
     const radius = 40;
-    let from_node = 0;
-    let to_node = 0;
+    let ref = useRef();
 
+    function renderD3() {
+        let svg = d3.select(ref.current); 
 
-    const refresh = () => {
-        setDoUpdate(!doUpdate);
-    };
-
-    useEffect(() => {
-        setRenderedEdges(concatenateEdges(stateMachine.connectionList));
-    }, [stateMachine]);
-
-    const ref = useD3((svg) => {
-
+        let c_edges = concatenateEdges(stateMachine.connectionList);
+ 
         svg.attr("width", "100%")
             .attr("height", "100%")
-            .style("border", "1px solid black");
+            .style("border", "1px solid black"); 
         
 
         svg.append("defs")
@@ -78,9 +71,11 @@ function DrawGraph() {
             .append("path")
             .attr("d","M 0 0 L 10 5 L 0 10 z");
 
-        const label_group = svg.selectAll("text")
-            .data(renderedEdges)
+        const label_group = svg.selectAll("text.edge")
+            .data(c_edges)
             .enter()
+
+        label_group
             .append("text")
             .attr("rotate","180deg")
             .attr("dy", -5)
@@ -91,7 +86,7 @@ function DrawGraph() {
             .text(d => d.parameter);
         
         const edge_group = svg.selectAll("path.edge")
-            .data(renderedEdges)
+            .data(c_edges)
             .enter()
         
         const node_group = svg.selectAll("g")
@@ -140,10 +135,10 @@ function DrawGraph() {
             .attr("text-anchor", "middle");
             
             
-
         node_group.append("text")
             .text( d => `q${d.nodeID}`)
             .attr("text-anchor", "middle")
+
 
         node_group.append("rect")
             .attr("width", radius*2)
@@ -167,10 +162,23 @@ function DrawGraph() {
             d3.selectAll(`path[class='edge']`)
                 .attr("d", DrawEdge);
         }
+       
+    }
 
+    useEffect(() => {
+        setRenderedEdges(concatenateEdges(stateMachine.connectionList));
+        renderD3();
+    }, [stateMachine, doUpdate]);
+ 
+    const refresh = () => {
+        d3.select("svg").selectAll("*").remove();
+        setStateMachine(stateMachine);
+        setRenderedEdges(concatenateEdges(stateMachine.connectionList));
+        console.log(stateMachine);
+        renderD3();
+    };
 
-    }, [stateMachine, doUpdate, renderedEdges]);
-   
+  
 
     const DrawEdge = (d) => {
             const      targetCx = stateMachine.listOfNodes[d.destination].cx
@@ -235,6 +243,9 @@ function DrawGraph() {
         console.log(newData);
         return newData;
     }
+    function debug() {
+        console.log("debug", stateMachine);
+    }
 
     function addNode() { 
         let newNodeId = stateMachine.addNode(200, 200);
@@ -242,7 +253,7 @@ function DrawGraph() {
         setDoUpdate(!doUpdate);
     }
     function deleteNode(event) {
-        let nodeID = event.target.value;
+        let nodeID = parseInt(event.target.value);
         console.log('deleting node', nodeID);
         stateMachine.removeNode(nodeID);
     }
@@ -255,12 +266,14 @@ function DrawGraph() {
     }
     
     function createTransition(event) {
-        let edge = event.target.value;
-        statemachine.updateLink(edge.origin, edge.destination, edge.parameter, 1);
+        event.preventDefault();
+        //stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 1);
     }
 
     function deleteTransition(event) {
-        let edge= event.target.value
+        event.preventDefault();
+        let edge = JSON.parse(event.target.value);
+        console.log(event.target.value);
         stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 2);
         setRenderedEdges(concatenateEdges(stateMachine.connectionList))
     }
@@ -268,17 +281,16 @@ function DrawGraph() {
     return (
         <>
         <div className="editor-container"> 
-            <svg ref={ref} style={{ height: '90vh', width: '70vw'}} ></svg>
-            <div className="testing-container" style={{ flex: 'inline-block', float: 'right', background: 'lightgrey' }}>
+            <svg ref={ref} style={{ height: '98vh', width: '68vw'}} ></svg>
+            <div className="testing-container" style={{ flex: 'inline-block', float: 'right', background: 'lightgrey', width: '30vw', overflowY: 'auto' }}>
                 <h3>Edit State Machine</h3> 
                 <div className="editor-toolbar" style={{ padding: '3px', margin: '5px' }}>
-                    <Button variant="outlined" onClick={addNode}>+ node</Button>
-                    <Button variant="outlined" >+ transition</Button>
-                    <Button variant="outlined" onClick={refresh}>refresh</Button>
+                    <button onClick={addNode}>+ node</button>
+                    <button onClick={refresh}>refresh</button>
                 </div>
-                <span>Enter a string to test</span>
-                <TextField />
-                <Button>Test</Button>
+                <span>Enter a string to test</span><br/>
+                <input type='text' />
+                <button>Test</button>
                 <h3>Nodes</h3>
                 <ul style={{ listStyle: 'none', paddingLeft: 0, marginLeft: 20 }}>
                     {stateMachine.listOfNodes.map((node, idx) => (
@@ -293,21 +305,21 @@ function DrawGraph() {
                     {stateMachine.connectionList.map((edge, idx) => (
                         <li key={`${edge}${idx}`}style={{ backgroundColor: (idx % 2 ? 'lightgrey' : 'white') }}>
                             <span key={`edge-span-${idx}`}>from: q{edge.origin}, to: q{edge.destination}, on: {edge.parameter}</span>
-                            <Button key={`edge-button-remove-${idx}`} onClick={deleteTransition} value={edge} >remove</Button>
+                            <Button key={`edge-button-remove-${idx}`} onClick={deleteTransition} value={JSON.stringify(edge)} >remove</Button>
                         </li>
                     ))}
                 </ul>
                 <h4>new transition</h4>
-                <form>
-                    <label for="from-node">from:</label>
+                <form onSubmit={createTransition}>
+                    <label >from:</label>
                     <select id="from-node" name="from-node">
                         {stateMachine.listOfNodes.map((node) => (
                             <option key={`from-select-option-${node.nodeID}`}>{node.nodeID}</option>
                         ))}
                     </select>
-                    <label for="on-value">on:</label>
+                    <label >on:</label>
                     <input id="on-value"/>
-                    <label for="to-node">from:</label>
+                    <label >to:</label>
                     <select id="to-node" name="to-node">
                         {stateMachine.listOfNodes.map((node) => (
                             <option key={`to-select-option-${node.nodeID}`}>{node.nodeID}</option>

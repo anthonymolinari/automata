@@ -163,6 +163,7 @@ export class automaton {
     //"Deletes" a node by clearing all the data within.
     removeNode(nodeID) {
         //Find the correct index of listOfNodes
+        console.log("from-removeNode", nodeID);
         let nodeIdx = 0
         for(let iter = 0; iter < this.listOfNodes.length; iter++) {
             if (this.listOfNodes[iter].nodeID === nodeID) {
@@ -170,6 +171,7 @@ export class automaton {
                 break
             }
         }
+        console.log("node to delete", this.listOfNodes[nodeIdx], nodeIdx);
         //Clear out all the statements from linkedRules
         for (let iter = 0; iter < this.listOfNodes[nodeIdx].linkedRules.length; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement

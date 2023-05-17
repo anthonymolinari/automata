@@ -1,0 +1,69 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsthm,amssymb}
+
+\usepackage{listings}
+\usepackage{courier}
+\usepackage{graphicx}
+\graphicspath{{./images/}}
+
+\usepackage{color}
+\definecolor{lightgray}{rgb}{.9,.9,.9}
+\definecolor{darkgray}{rgb}{.4,.4,.4}
+\definecolor{purple}{rgb}{0.65, 0.12, 0.82}
+
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=JavaScript,
+   backgroundcolor=\color{lightgray},
+   extendedchars=true,
+   basicstyle=\footnotesize\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   numbers=left,
+   numberstyle=\footnotesize,
+   numbersep=9pt,
+   tabsize=2,
+   breaklines=true,
+   showtabs=false,
+   captionpos=b
+}
+
+
+\begin{document}
+\title{Theory of Computation Final Project Report}%replace X with the appropriate number
+\author{Hal Norman, Mark Wegrzynowski, Anthony Molinari\\ %replace with your name
+Math-415 }
+
+\maketitle
+
+\section*{Problem}
+
+\section*{Application Features}
+
+\section*{Implementation}
+Automaton Datastructure:
+The following class definition is how we represent both finite deterministic and non-deterministic state machines.
+\begin{lstlisting}{Javascript}
+class automaton {
+
+}
+\end{lstlisting}
+
+\section*{Demo/Examples}
+
+\end{document}
