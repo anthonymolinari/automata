@@ -175,6 +175,7 @@ function DrawGraph() {
         setStateMachine(stateMachine);
         setRenderedEdges(concatenateEdges(stateMachine.connectionList));
         console.log(stateMachine);
+        console.log(renderedEdges);
         renderD3();
     };
 
