@@ -508,7 +508,8 @@ class automaton {
             }
         }
         //Clear out all the statements from linkedRules
-        for (let iter = 0; iter < this.listOfNodes[nodeIdx].linkedRules.length; iter++) {
+        let size = this.listOfNodes[nodeIdx].linkedRules.length
+        for (let iter = 0; iter < size; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
             let command = this.statementParser(this.listOfNodes[nodeIdx].linkedRules[iter])
             //console.log(this.listOfNodes[nodeID].linkedRules[iter]) //DEBUG printout
@@ -519,7 +520,7 @@ class automaton {
                 //In Linked Rules, command[0] is the node we want to alter
                 for(let iter = 0; iter < this.listOfNodes.length; iter++) {
                     if (this.listOfNodes[iter].nodeID === parseInt(command[0])) {
-                        this.listOfNodes[command[0]].removeRule(this.listOfNodes[nodeIdx].linkedRules[iter])
+                        this.listOfNodes[iter].removeRule(this.listOfNodes[nodeIdx].linkedRules[iter])
                         this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
                         break
                     }
@@ -529,7 +530,8 @@ class automaton {
         }
 
         //Clear out all the statements from Rules
-        for (let iter = 0; iter < this.listOfNodes[nodeIdx].rules.length; iter++) {
+        size = this.listOfNodes[nodeIdx].rules.length
+        for (let iter = 0; iter < size; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
             let command = this.statementParser(this.listOfNodes[nodeIdx].rules[iter])
             this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
