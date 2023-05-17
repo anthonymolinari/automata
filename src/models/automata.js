@@ -1,23 +1,358 @@
 export class automaton {
     constructor(name) {
-        this.autoName = name,
+        //Name of the automaton
+        this.autoName = name
+        //Contains all the nodes of the automation
         this.listOfNodes = []
+        //The copy exists due to using the 
+        //   State Elimination method for RE generation
         this.copyOfListOfNodes = []
+        //Transition Values is used as a cheap way to tell if
+        //   the automaton is a DFA or an NFA
         this.transitionValues = []
-
         //Contains a list of all the unique rules for
         //  simplifying the building of the edges
         this.connectionList = []
+        //The copy exists due to using the 
+        //   State Elimination method for RE generation
+        //   and being used for generation of the SVG image
+        this.connectionListCopy = []
+        //This is where the regular expression will go
         this.regularExpression = ""
-
         //This will decide if the automaton is a
-        // DFA, NFA or R.E.
+        // DFA or NFA
         //0: Unknown (Default start state)
         //1: DFA
         //2: NFA
         this.automatonType = 0
     }
 
+    //Direct access to regularExpression
+    setRegularExpression(RE) {
+        this.regularExpression = RE
+    }
+
+    //Test if a string is valid for the DFA
+    testMembershipDFA(stringToTest) {
+        let parseString = stringToTest
+        let currIdx = 0
+
+        //Find the starting address
+        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+            if  (this.listOfNodes[iter].identity === 1) {
+                currIdx = iter
+                break
+            }
+        }
+
+        //Run through the string, following the path through the DFA
+        while (parseString.length > 0) {
+            for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
+                let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
+                if (command[2] === parseString.substr(0, 1)) {
+                    for (let innerIter = 0; innerIter < this.listOfNodes.length; innerIter++) {
+                        if  (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
+                            currIdx = innerIter
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+            parseString = parseString.substr(1, parseString.length - 1)
+        }
+
+        //Check if the string ended on a goal node
+        if (this.listOfNodes[currIdx].identity === 2) {
+            return 0
+        }
+        //Return -1 if no goal node is reached
+        return -1
+    }
+
+    //Test if a string is valid for the NFA
+    testMembershipNFA(stringToTest) {
+        let parseString = stringToTest
+        let currIdx = 0
+        let nextIdx = 0
+        let result = 1
+        let moreIdx = []
+
+        //Find the starting address
+        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+            if  (this.listOfNodes[iter].identity === 1) {
+                currIdx = iter
+                break
+            }
+        }
+
+         //Run through the string, following the path through the NFA
+         while (parseString.length > 0) {
+            for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
+                let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
+                let paths = 0
+                if (command[2] === parseString.substr(0, 1)) {
+                    for (let innerIter = 0; innerIter < this.listOfNodes.length; innerIter++) {
+                        if  (this.listOfNodes[innerIter].nodeID === parseInt(command[1]) && paths < 1) {
+                            nextIdx = innerIter
+                            paths++
+                        }
+                        else if (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
+                            moreIdx.push(currIdx)
+                        }
+                    }
+                }
+                else if (command[2] === "E") {
+                    moreIdx.push(currIdx)
+                    paths++
+                }
+            }
+            parseString = parseString.substr(1, parseString.length - 1)
+            currIdx = nextIdx
+
+            if (moreIdx.length > 0) {
+                for (let iter = 0; iter < moreIdx.length; iter++) {
+                    result = this.testMembershipNFARecursiveHelper(stringToTest, moreIdx[iter])
+                }
+                moreIdx = []
+            }
+        }
+
+        //Check if the string ended on a goal node
+        if (this.listOfNodes[currIdx].identity === 2 || result === 0) {
+            return 0
+        }
+        //Return -1 if no goal node is reached
+        return -1
+
+    }
+
+    testMembershipNFARecursiveHelper(stringToTest, nodeIdx) {
+        let parseString = stringToTest
+        let currIdx = nodeIdx
+        let result = 1
+        let moreIdx = []
+
+        //Run through the string, following the path through the NFA
+        while (parseString.length > 0) {
+            for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
+                let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
+                let paths = 0
+                if (command[2] === parseString.substr(0, 1)) {
+                    for (let innerIter = 0; innerIter < this.listOfNodes.length; innerIter++) {
+                        if  (this.listOfNodes[innerIter].nodeID === parseInt(command[1]) && paths < 1) {
+                            currIdx = innerIter
+                            paths++
+                        }
+                        else if (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
+                            moreIdx.push(currIdx)
+                        }
+                    }
+                }
+                else if (command[2] === "E") {
+                    moreIdx.push(currIdx)
+                    paths++
+                }
+            }
+            parseString = parseString.substr(1, parseString.length - 1)
+
+            if (moreIdx.length > 0) {
+                for (let iter = 0; iter < moreIdx.length; iter++) {
+                    //Check all other potential paths if there were more than one options
+                    //By virtue, we don't have to worry about loops
+                    result = this.testMembershipNFARecursiveHelper(stringToTest, moreIdx[iter])
+                }
+                moreIdx = []
+            }
+        }
+
+        //Check if the string ended on a goal node
+        if (this.listOfNodes[currIdx].identity === 2 || result === 0) {
+            return 0
+        }
+        //Return -1 if no goal node is reached
+        return -1
+    }
+
+    //Test if a string is valid for the Regular Expression
+    testMembershipRE(stringToTest) {
+        let parseString = stringToTest
+        let expression = this.regularExpression
+        let start = 0
+        let tempVal = 0
+
+        while (start < expression.length) {
+            //Set up as the value and if it repeats.
+            //Repeating blocks will be denoted with a 2 while
+            //   repeating parameters will be denoted with a 1
+            //   choices will be shown with a 3 while repeating
+            //   choices will have a 4 instead
+            //Example:
+            // ['a', 1]  Repeats on itself
+            // ['b', 0]  Once
+            // ['a', 2]  Repeating the string 'ab', should always
+            // ['b', 2]    be next to each other
+            let expressionValues = []
+            let braceStart = []
+            for (let end = start; end < expression.length; end++) {
+                //console.log(expression[end])
+                if (expression[end] === "(") {
+                    braceStart.push(expressionValues.length)
+                }
+                else if (expression[end] === ")") {
+                    if (expression[end + 1] === "*") {
+                        end++
+                        for (let iter = braceStart.pop(); iter < expressionValues.length; iter++) {
+                            if (expressionValues[iter][1] === 3) {
+                                expressionValues[iter][1] = 4
+                            }
+                            else {
+                                expressionValues[iter][1] = 2
+                            }
+                        }
+                    }   
+                    else {
+                        braceStart.pop()
+                    }
+
+                    if (end + 1 >= expression.length) {
+                        tempVal = end
+                    }
+                }
+                else if (expression[end] === "*") {
+                    let temp = expressionValues.pop()
+                    temp[1] = 1
+                    expressionValues.push(temp)
+                    if (end + 1 >= expression.length) {
+                        tempVal = end
+                    }
+                }
+                else if (expression[end] === ".") {
+                    tempVal = end
+                    break
+                }
+                else if (expression[end] === "U") {
+                    let temp = expressionValues.pop()
+                    temp[1] = 3
+                    expressionValues.push(temp)
+                    expressionValues.push([expression[end + 1], 3])
+                    end++
+                }
+                else {
+                    expressionValues.push([expression[end], 0])
+                }
+            }
+
+            for (let iter = 0; iter <= parseString.length;) {
+                if (expressionValues.length === 0) { 
+                    parseString = parseString.substr(iter, parseString.length - 1)
+                    break 
+                }
+                let reader = expressionValues.shift()
+                //Only read in once
+                if (reader[1] === 0) {
+                    if (parseString[iter] != reader[0]) {
+                        return -1
+                    }
+                    iter++
+                }
+                //Kleen star was found (This means 0 or more can exist)
+                else if (reader[1] === 1) {
+                    while (parseString[iter] === reader[0]) { iter++}
+                }
+                //Kleen star with parenthenses was found
+                else if (reader[1] === 2) {
+                    let section = []
+                    section.push(reader[0])
+                    do {
+                        reader = expressionValues.shift()
+                        section.push(reader[0])
+                    } while (expressionValues[0][1] === 2)
+
+                    //Check if each repeating piece does indeed match completely
+                    let matching = 0
+                    for (let innerIter = 0; true ; innerIter++) {
+                        if (iter === parseString.length) {
+                            break
+                        }
+
+                        if (innerIter >= section.length) {
+                            if (matching === section.length) {
+                                iter += innerIter
+                            }
+                            else {
+                                break
+                            }
+                            innerIter = 0
+                        }
+                        if (parseString[iter] === section[innerIter]) {
+                            matching++
+                        }
+                    }
+                }
+                //There exist multiple paths that can be taken
+                else if (reader[1] === 3) {
+                    let section = []
+                    section.push(reader[0])
+                    do {
+                        reader = expressionValues.shift()
+                        section.push(reader[0])
+                    } while (expressionValues[0][1] === 3)
+
+                    for (let innerIter = 0; innerIter < section.length ; innerIter++) {
+                        if (parseString[iter] === section[innerIter]) {
+                            iter++
+                            break
+                        }
+                    }
+                    //Fail if no paths can be taken
+                    return -1
+                }
+                //There exist multiple paths that can be taken
+                //  and these paths are repeating
+                else if (reader[1] === 4) {
+                    let section = []
+                    section.push(reader[0])
+                    do {
+                        reader = expressionValues.shift()
+                        section.push(reader[0])
+                        if (expressionValues.length === 0) { break }
+                    } while (expressionValues[0][1] === 4)
+
+                    //Check if each repeating piece does indeed match completely
+                    let matching = 0
+                    for (let innerIter = 0; true ; innerIter++) {
+                        if (iter === parseString.length) {
+                            break
+                        }
+
+                        if (innerIter >= section.length) {
+                            if (matching > 0) {
+                                iter++
+                                
+                            }
+                            else {
+                                break
+                            }
+                            innerIter = 0
+                        }
+                        if (parseString[iter] === section[innerIter] && matching === 0) {
+                            matching++
+                        }
+                    }
+                }  
+            }
+
+            //Skips the concatonation and sets up 
+            //  start on the next non-concat value
+            start = tempVal + 1
+        }
+
+        return 0
+    }
+
+    //Builds up connectionList, which is used to build the edges in
+    //  a SVG image
     buildConnection(origin, destination, parameter) {
         for (let iter = 0; iter < this.connectionList.length; iter++) {
             if (this.connectionList[iter].origin === origin && 
@@ -36,6 +371,8 @@ export class automaton {
         this.connectionList.push(connection)
     }
 
+    //Removes a connection from connectionList, is called by any 
+    //  function that involves removing nodes in some capacity
     removeConnection(origin, destination, parameter) {
         for (let iter = 0; iter < this.connectionList.length; iter++) {
             if (this.connectionList[iter].origin === origin && 
@@ -59,7 +396,7 @@ export class automaton {
         this.automatonType = 1
     }
 
-
+    //Parses a string statement and returns it in an easy to access array
     statementParser(statement) {
         
         //Operation flag tracks if its the origin, 
@@ -163,7 +500,6 @@ export class automaton {
     //"Deletes" a node by clearing all the data within.
     removeNode(nodeID) {
         //Find the correct index of listOfNodes
-        console.log("from-removeNode", nodeID);
         let nodeIdx = 0
         for(let iter = 0; iter < this.listOfNodes.length; iter++) {
             if (this.listOfNodes[iter].nodeID === nodeID) {
@@ -171,7 +507,6 @@ export class automaton {
                 break
             }
         }
-        console.log("node to delete", this.listOfNodes[nodeIdx], nodeIdx);
         //Clear out all the statements from linkedRules
         for (let iter = 0; iter < this.listOfNodes[nodeIdx].linkedRules.length; iter++) {
             //Build an array containing the origin, destination and paramenter of the statement
@@ -285,6 +620,7 @@ export class automaton {
         }
     }
 
+    //Builds a table which is used for DFA simplificaiton
     buildTable() {
         //First, construct a table for which to determine which nodes to simplify
         //Example table setup
@@ -361,8 +697,11 @@ export class automaton {
     simplifyDFA() {
         //Check if the Automaton is a DFA
         if (this.automatonType != 1) {
-            console.log("Error: DFA not detected")
-            return;            
+            //console.log("Error: DFA not detected")
+            return -1            
+        }
+        else if (this.listOfNodes.length <= 2) {
+            return -1
         }
 
         let table = this.buildTable()
@@ -518,14 +857,47 @@ export class automaton {
 
     //Check if a node CAN reach a goal state, if not then remove said node
     removeDeadStates() {
+        let deadStates = []
+        for (let iter = 0; iter < this.listOfNodes.length; iter++) {
+            let internalRules = 0
+            for (let innerIter = 0; innerIter < this.listOfNodes[iter].rules.length; innerIter++) {
+                let command = this.statementParser(this.listOfNodes[iter].rules[innerIter]) 
+                //Check if the node points to itself AND it isn't either a start or goal node
+                if (command[0] === command[2] && this.listOfNodes[iter].nodeID === 0) {
+                    internalRules++
+                }    
+            }
 
+            //If all the rules inside a node point to themselves, then the node is a dead state
+            if (internalRules >= this.listOfNodes[iter].rules.length) {
+                deadStates.push(this.listOfNodes[iter].nodeID)
+            }
+        }
+
+        if (deadStates.length > 0) {
+            //Remove the found deadStates
+            for (let iter = 0; iter < deadStates.length; iter++) {
+                this.removeNode(deadStates[iter])
+            }
+            return 0
+        }
+        else {
+            //No more dead states found
+            return -1
+        }
     }
 
     convertToRegularExpression() {
-        //Generate a copy of listOfNodes for being used for RE generation
+        //Generate a copy of listOfNodes and connectionList
+        //  for restoring the automaton after performing the
+        //  State Elimination method of Regular Expression
+        //  generation
+        this.copyOfListOfNodes = this.listOfNodes.slice()
+        this.connectionListCopy = this.connectionList.slice()
         
         //First, remove the dead States prior to state Removal
-        this.removeDeadStates()
+        while (this.removeDeadStates() != -1) {}
+
         //Add two new states to convert to a General NFA
         let startNode = 0
         let goalIdxs = []
@@ -589,13 +961,15 @@ export class automaton {
 
             //Get all the OUT nodeIDs
             for (let iter = 0; iter < this.listOfNodes[nodeToRemoveIdx].rules.length; iter++) {
-                let command = this.statementParser(this.listOfNodes[nodeToRemoveIdx].rules[iter])
+                let command = this.statementParser(this.listOfNodes[nodeToRemoveIdx].rules[iter]) 
                 OUT.push([command[1], command[2]])
             }
 
             //Get all the In nodeIDS
             for (let iter = 0; iter < this.listOfNodes[nodeToRemoveIdx].linkedRules.length; iter++) {
                 let command = this.statementParser(this.listOfNodes[nodeToRemoveIdx].linkedRules[iter], 1)
+                //Remove now unused connections between nodes
+                this.updateLink(command[0], command[1], command[2], 2)
                 IN.push([command[0], command[2]])
             }
 
@@ -622,12 +996,42 @@ export class automaton {
                         }
 
                         if (IN[iterOne][1] != 'E') {
-                            statementPieces.push(IN[iterOne][1])
+                            statement += IN[iterOne][1]
+                            //statementPieces.push(IN[iterOne][1])
                         }
 
-                        //Statement building logic here
-                        
+                        for (;statementPieces.length > 0;) {
+                            //Statement building logic here
+                            if (flags[0] >= 2) {
+                                flags[0] = 0
+                                flags[1] = 0
+                                statement += `(${statementPieces[0]}U${statementPieces[1]})*`
+                                statementPieces.splice(0, 2)
+                            }
+                            else if (flags[1] > 0) {
+                                flags[1] -= 1
+                                if (statementPieces[0].substr(statementPieces[0].length - 1, 1) === '*') {
+                                    statement += statementPieces[0]
+                                }
+                                else {
+                                    statement += `${statementPieces[0]}*`
+                                }
+                                statementPieces.splice(0, 1)
+                            }
+                            else {
+                                if (statement === statementPieces[0]) {
+                                    statement += '*'
+                                }
+                                else {
+                                    statement += statementPieces[0]       
+                                }
+                                statementPieces.splice(0, 1)
+                            }
+                        }
 
+                        //Encase each piece in parentheses once the
+                        //  construction is complete
+                        //statement = `(${statement})`
                         this.updateLink(IN[iterOne][0], OUT[iterTwo][0], statement, 1) 
                         statement = ''
                         flags = [0, 0]
@@ -635,11 +1039,25 @@ export class automaton {
                 }
             }
 
+            //Remove the node now that all needed steps are done
             this.removeNode(nodeIDToRemove) 
         }
         
         //Final "Removal" will occur when handling the last two nodes
+        let command = this.statementParser(this.listOfNodes[0].rules[0])
+        this.regularExpression = command[2]
+        this.listOfNodes = []
+        this.connectionList = []
 
+        
+        //Restore the automaton
+        this.listOfNodes = this.copyOfListOfNodes.slice()
+        this.connectionList = this.connectionListCopy.slice()
+        this.copyOfListOfNodes = []
+        this.connectionListCopy = []
+        
+        //Rebuild the automaton based on the rules in connectionList
+        // TODO
     }
 
     //The limit is high, but printing over 10k nodes is 
@@ -648,8 +1066,8 @@ export class automaton {
         for (let iter = 0; (iter < limiter && iter < this.listOfNodes.length); iter++) {
             console.log("====================")
             console.log(`Node ${iter + 1}`)
-            console.log("X Pos: ", this.listOfNodes[iter].xPosition, "")
-            console.log("Y Pos: ", this.listOfNodes[iter].yPosition, "")
+            console.log("X Pos: ", this.listOfNodes[iter].cx, "")
+            console.log("Y Pos: ", this.listOfNodes[iter].cy, "")
             console.log("nodID: ", this.listOfNodes[iter].nodeID, "")
             console.log("noTpe: ", this.listOfNodes[iter].identity, "")
             console.log("--------------------")
@@ -664,14 +1082,44 @@ export class automaton {
             }
         }
         console.log("====================")
-    }    
+    }
+
+    //Testing function
+    //1 For DFA
+    //2 For NFA
+    //3 For RE
+    testMembership(testSet, opFlag) {
+        let result = 1
+        for (let iter = 0; iter < testSet.length; iter+=2) {
+            switch(opFlag) {
+                case 1:
+                    result = this.testMembershipDFA(testSet[iter])
+                    if (result != testSet[iter + 1]) {
+                        console.log(`ERROR found in DFA membership test #${iter / 2}`)
+                    }
+                    break
+                case 2:
+                    result = this.testMembershipNFA(testSet[iter])
+                    if (result != testSet[iter + 1]) {
+                        console.log(`ERROR found in NFA membership test #${iter / 2}`)
+                    }
+                    break
+                case 3:
+                    result = this.testMembershipRE(testSet[iter])
+                    if (result != testSet[iter + 1]) {
+                        console.log(`ERROR found in RE membership test #${iter / 2}`)
+                    }
+                    break
+            }   
+        }
+    }
     serialize() {
         return JSON.stringify(this);
     }
     // json is the parsed intermediate object returned from JSON.parse(json_string);
     static loads(json) {
         return Object.assign(new automaton(), json);
-    }
+    } 
 }
 
 export class node {
@@ -704,10 +1152,22 @@ export class node {
         //Example statements:
         // {0, 1, a}
         // {0, 0, b}
+        //check if the statement already exists
+        for (let iter = 0; iter < this.rules.length; iter++) {
+            if (statement === this.rules[iter]) {
+                return
+            }
+        }
         this.rules.push(statement)
     }
 
     makeLinkedRule(statement) {
+        //check if the statement already exists
+        for (let iter = 0; iter < this.linkedRules.length; iter++) {
+            if (statement === this.linkedRules[iter]) {
+                return
+            }
+        }
         this.linkedRules.push(statement)
     }
 
@@ -717,11 +1177,11 @@ export class node {
         for (let iter = 0; iter < this.rules.length; iter++) {
             if (this.rules[iter] === statement) {
                 this.rules.splice(iter, 1)
-                return 0
+                return
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
 
     }
 
@@ -731,11 +1191,11 @@ export class node {
         for (; iter < this.linkedRules.length; iter++) {
             if (this.linkedRules[iter] === statement) {
                 this.linkedRules.splice(iter, 1)
-                return 0
+                return
             }
         }
         //Should the statement not be found, this is an error and should be reported
-        console.log("Error, statement not found!")
+        //console.log("Error, statement not found!")
     }
 }
 
