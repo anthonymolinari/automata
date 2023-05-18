@@ -36,7 +36,8 @@ export default function Window() {
     console.log(`action event on (${event.windowLabel}): ${event.payload}`);
     if (event.payload === 'save') {
       console.log('saving current project');
-      
+      console.log(stateMachine);
+      saveProject(stateMachine.autoName, stateMachine);
     }
   });
 

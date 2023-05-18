@@ -6,6 +6,7 @@ import { GlobalContext } from '../context/GlobalState';
 import * as d3 from 'd3';
 
 import { automaton } from '../models/automata';
+import { saveProject } from '../services/filesystem_ops';
 
 function generateDFA() {
     //Testing
@@ -53,7 +54,6 @@ function DrawGraph() {
     const [ nt_to, setNt_to ] = useState(0);
     const [ smTestString, setSmTestString ] = useState('');
     const [ reTestString, setReTestString ] = useState('');
-    const [ smTested, setSmTested ] = useState([]);
     const [ reTested, setReTested ] = useState([]);
     
     const radius = 40;
@@ -111,9 +111,7 @@ function DrawGraph() {
             .attr("r", radius)
             .attr("id", d => d.nodeID)
             .attr("fill", d => {
-                if ( d.identity === 1) { // starting state
-                    d3.select(`g[id='${d.nodeID}'`)
-                        .append("polygon")
+                if ( d.identity === 1) { // starting state 
                     return 'blue'; 
                 }
                 if ( d.identity === 2) { // terminal
@@ -132,7 +130,9 @@ function DrawGraph() {
                         .attr("stroke-width", 2)
                         .attr("r", radius-7)
                         .attr("fill", "");
+                    return 'blue'
                 }
+                    
                 return 'grey'; // else non-terminal
             })
             .attr("stroke", "black")
@@ -197,7 +197,6 @@ function DrawGraph() {
     };
 
     const DrawEdge = (d) => {
-            console.log(d);
             const      targetCx = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.destination).cx
             const      targetCy = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.destination).cy
             const      sourceCx = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.origin).cx
@@ -259,10 +258,7 @@ function DrawGraph() {
         }
         console.log(newData);
         return newData;
-    }
-    function debug() {
-        console.log("debug", stateMachine);
-    }
+    } 
 
     function addNode() { 
         let newNodeId = stateMachine.addNode(200, 200);
@@ -273,19 +269,21 @@ function DrawGraph() {
         let nodeID = parseInt(event.target.value);
         console.log('deleting node', nodeID);
         stateMachine.removeNode(nodeID);
+        refresh();
     }
 
-    function saveChanges(event) {
-        event.preventDefaults();
+    function saveChanges() {
         // take a snapshot of the project
         // and write it to disk
-        console.log(stateMachine);
+        console.log(stateMachine.serialize());
+        saveProject(stateMachine.autoName, stateMachine.serialize());
     }
     
     function createTransition(event) {
         event.preventDefault();
         console.log(nt_from, nt_parameter, nt_to);
         stateMachine.updateLink(parseInt(nt_from), parseInt(nt_to), nt_parameter, 1);
+        refresh();
     }
 
     function testMembership() {
@@ -326,6 +324,7 @@ function DrawGraph() {
         console.log(event.target.value);
         stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 2);
         setRenderedEdges(concatenateEdges(stateMachine.connectionList))
+        refresh();
     }
 
     return (
@@ -337,6 +336,7 @@ function DrawGraph() {
                 <div className="editor-toolbar" style={{ padding: '3px', margin: '5px' }}>
                     <button onClick={addNode}>+ node</button>
                     <button onClick={refresh}>refresh</button>
+                    <button onClick={saveChanges}>save</button>
                 </div>
                 <span>Enter a string to test</span><br/>
                 <input type='text' onChange={(e) => { setSmTestString(e.target.value) }}/>
@@ -351,6 +351,9 @@ function DrawGraph() {
                         <li key={`${node.nodeID}-${idx}-li`} style={{ backgroundColor: (idx % 2 ? 'lightgrey' : 'white') }}>
                             <span key={`node-span-${idx}`} >q{node.nodeID}</span>
                             <Button key={`node-button-remove-${idx}`} onClick={deleteNode} value={node.nodeID}>remove</Button>
+                            <button onClick={() => node.identity = 1 }>start</button>
+                            <button onClick={() => node.identity = 2 }>accept</button>
+                            <button onClick={() => node.identity = 0 }>non-term</button>
                         </li>
                     ))}
                 </ul>
@@ -423,8 +426,6 @@ export default function Editor() {
     const { activeProject, setStateMachine } = useContext(GlobalContext);  
  
     useEffect(() => {
-        console.log(`showing editor for project: ${activeProject.meta.projectname}`);
-        setStateMachine(generateDFA()); // get automaton ds
     }, [activeProject]);
 
     if (activeProject === '' || activeProject === undefined ) {

@@ -31,19 +31,15 @@ export async function createNewProjectFiles(projectName) {
         console.log('project directory exists');
     }
 
+    let newProject = new automaton();
+    newProject.autoName = projectName;
     // create scaffolding for the project file
-    const date = new Date();
-    const scaffolding = {
-        "data": {},
-        "meta": {
-            "projectname": `${projectName}`,
-        }
-    };
 
+    let data = newProject.serialize();
 
     try {
         await writeTextFile({
-            contents: JSON.stringify(scaffolding),
+            contents: data,
             path: `${projectDir}/${projectName}.json`
         }, {
             dir: BaseDirectory.Document
@@ -61,6 +57,7 @@ export async function openProject(projectName) {
         readTextFile(`${projectDir}/${projectName}`, {
             dir: BaseDirectory.Document
         }).then( (value) => {
+            console.log(value);
             resolve(automaton.loads(JSON.parse(value)));
         }).catch( (error) => {
             reject(error);
@@ -72,7 +69,7 @@ export async function openProject(projectName) {
 export async function saveProject(projectName, project) {
     return new Promise( (resolve, reject) => {
         writeTextFile({
-            contents: project.serialize(),
+            contents: project,
             path: `${projectDir}/${projectName}.json`
         }, {
             dir: BaseDirectory.Document

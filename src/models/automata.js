@@ -47,23 +47,27 @@ export class automaton {
 
         //Run through the string, following the path through the DFA
         while (parseString.length > 0) {
+            let updated = 0
             for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
                 let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
                 if (command[2] === parseString.substr(0, 1)) {
                     for (let innerIter = 0; innerIter < this.listOfNodes.length; innerIter++) {
                         if  (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
                             currIdx = innerIter
+                            updated = 1;
                             break
                         }
                     }
                     break
                 }
             }
+            if (updated === 0)
+                break;
             parseString = parseString.substr(1, parseString.length - 1)
         }
 
         //Check if the string ended on a goal node
-        if (this.listOfNodes[currIdx].identity === 2) {
+        if (this.listOfNodes[currIdx].identity === 2 && parseString.length === 0) {
             return 0
         }
         //Return -1 if no goal node is reached
@@ -88,6 +92,7 @@ export class automaton {
 
          //Run through the string, following the path through the NFA
          while (parseString.length > 0) {
+            let updated = 0;
             for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
                 let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
                 let paths = 0
@@ -100,12 +105,16 @@ export class automaton {
                         else if (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
                             moreIdx.push(currIdx)
                         }
+                        updated++;
                     }
                 }
                 else if (command[2] === "E") {
                     moreIdx.push(currIdx)
                     paths++
                 }
+            }
+            if (updated === 0) {
+                break;
             }
             parseString = parseString.substr(1, parseString.length - 1)
             currIdx = nextIdx
@@ -119,7 +128,7 @@ export class automaton {
         }
 
         //Check if the string ended on a goal node
-        if (this.listOfNodes[currIdx].identity === 2 || result === 0) {
+        if ((this.listOfNodes[currIdx].identity === 2 || result === 0) && parseString === 0) {
             return 0
         }
         //Return -1 if no goal node is reached
