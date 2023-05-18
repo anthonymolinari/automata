@@ -47,23 +47,30 @@ class automaton {
 
         //Run through the string, following the path through the DFA
         while (parseString.length > 0) {
+            let updated = 0
             for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
                 let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
                 if (command[2] === parseString.substr(0, 1)) {
                     for (let innerIter = 0; innerIter < this.listOfNodes.length; innerIter++) {
                         if  (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
                             currIdx = innerIter
+                            updated = 1
                             break
                         }
                     }
                     break
                 }
             }
+
+            if (updated === 0) {
+                break
+            }
             parseString = parseString.substr(1, parseString.length - 1)
         }
 
         //Check if the string ended on a goal node
-        if (this.listOfNodes[currIdx].identity === 2) {
+        if (this.listOfNodes[currIdx].identity === 2 && parseString.length === 0) {
+            
             return 0
         }
         //Return -1 if no goal node is reached
@@ -1136,8 +1143,8 @@ class node {
         //id index starts at 0 and goes up
         this.nodeID = id,
         //identity means if the node is either a
-        // non-terminal (0), start position (1) or
-        // goal node (2)
+        // non-terminal (0), start position (1),
+        // goal node (2) or start and goal node (3)
         this.identity = iden
     }
 
@@ -1249,24 +1256,32 @@ autoOne.updateIdentity(0, 1)
 autoOne.addNode(33, 17)
 //Link them together
 autoOne.updateLink(0, 1, 'a', 1)
-autoOne.updateLink(1, 0, 'a', 1)
+//autoOne.updateLink(1, 0, 'a', 1)
 //create the bottom nodes
 autoOne.addNode(13, 37)
-autoOne.updateIdentity(2, 2)
+//autoOne.updateIdentity(2, 2)
 autoOne.addNode(33, 37)
 autoOne.updateIdentity(3, 2)
 //Link the bottom nodes together
-autoOne.updateLink(2, 2, 'b', 1)
-autoOne.updateLink(3, 3, 'b', 1)
-autoOne.updateLink(3, 2, 'a', 1)
-autoOne.updateLink(2, 3, 'a', 1)
-//Link the top nodes to the bottom nodes
 autoOne.updateLink(0, 2, 'b', 1)
+autoOne.updateLink(2, 3, 'a', 1)
 autoOne.updateLink(1, 3, 'b', 1)
+//autoOne.updateLink(2, 3, 'a', 1)
+//Link the top nodes to the bottom nodes
+//autoOne.updateLink(0, 2, 'b', 1)
+//autoOne.updateLink(1, 3, 'b', 1)
 
 console.log(autoOne.connectionList)
-autoOne.removeNode(1)
-console.log(autoOne.connectionList)
+//autoOne.removeNode(1)
+//console.log(autoOne.connectionList)
+let testVal = autoOne.testMembershipDFA('abaaa')
+
+if (testVal === -1) {
+    console.log("Membership failed")
+}
+else {
+    console.log("Membership Confirmed")
+}
 
 /*
 //Testing adding and removing a link 
