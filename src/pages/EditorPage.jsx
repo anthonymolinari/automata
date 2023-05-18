@@ -3,7 +3,6 @@ import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, D
 
 import { GlobalContext } from '../context/GlobalState';
 
-import { useD3 } from '../hooks/useD3';
 import * as d3 from 'd3';
 
 import { automaton } from '../models/automata';
@@ -46,6 +45,17 @@ function DrawGraph() {
     const [ renderedEdges, setRenderedEdges ] = useState([]);
 
     const { stateMachine, setStateMachine } = useContext(GlobalContext);
+    
+    const [ regEx, setRegEx ] = useState('');
+    // state variables for forms and inputs
+    const [ nt_from, setNt_from ] = useState(0);
+    const [ nt_parameter, setNt_parameter ] = useState('');
+    const [ nt_to, setNt_to ] = useState(0);
+    const [ smTestString, setSmTestString ] = useState('');
+    const [ reTestString, setReTestString ] = useState('');
+    const [ smTested, setSmTested ] = useState([]);
+    const [ reTested, setReTested ] = useState([]);
+    
     const radius = 40;
     let ref = useRef();
 
@@ -97,7 +107,6 @@ function DrawGraph() {
             .attr("id", d => d.nodeID)
             .attr("transform", d => `translate(${d.cx},${d.cy})`);
      
-
         node_group.append("circle")
             .attr("r", radius)
             .attr("id", d => d.nodeID)
@@ -115,6 +124,14 @@ function DrawGraph() {
                         .attr("r", radius-7)
                         .attr("fill", "transparent");
                     return 'green'; 
+                }
+                if ( d.identity === 3) {
+                    d3.select(`g[id=${d.nodeID}'`)
+                        .append("circle")
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 2)
+                        .attr("r", radius-7)
+                        .attr("fill", "");
                 }
                 return 'grey'; // else non-terminal
             })
@@ -179,13 +196,12 @@ function DrawGraph() {
         renderD3();
     };
 
-  
-
     const DrawEdge = (d) => {
-            const      targetCx = stateMachine.listOfNodes[d.destination].cx
-            const      targetCy = stateMachine.listOfNodes[d.destination].cy
-            const      sourceCx = stateMachine.listOfNodes[d.origin].cx
-            const      sourceCy = stateMachine.listOfNodes[d.origin].cy
+            console.log(d);
+            const      targetCx = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.destination).cx
+            const      targetCy = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.destination).cy
+            const      sourceCx = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.origin).cx
+            const      sourceCy = stateMachine.listOfNodes.find((elm) => elm.nodeID === d.origin).cy
 
             if(d.origin !== d.destination) {
                 let xDiff = sourceCx - targetCx
@@ -268,7 +284,40 @@ function DrawGraph() {
     
     function createTransition(event) {
         event.preventDefault();
-        //stateMachine.updateLink(edge.origin, edge.destination, edge.parameter, 1);
+        console.log(nt_from, nt_parameter, nt_to);
+        stateMachine.updateLink(parseInt(nt_from), parseInt(nt_to), nt_parameter, 1);
+    }
+
+    function testMembership() {
+        let res = -1;
+        if (stateMachine.automatonType === 1) {
+            res = stateMachine.testMembershipDFA(smTestString);
+            console.log(smTestString, res);
+            alert(`${smTestString}: ${res}`);
+            return;
+        }        
+        if (stateMachine.automatonType === 1) {
+            res = stateMachine.testMembershipNFA(smTestString);
+            console.log(smTestString, res);
+            alert(`${smTestString}: ${res}`);
+            return;
+        }
+        console.log('invalid state machine, cannot check membership');
+    }
+
+    function add_regex_to_project() {
+        stateMachine.setRegularExpression(regEx);
+        refresh();
+    }
+
+    function testMemberhsipRegex() {
+        console.log("test regex membership: ", reTestString);
+        let res = stateMachine.testMembershipRE(reTestString);
+        console.log(res);
+        if (res === 0) {
+            // is member
+            setReTested([reTestString, ...reTested]);
+        }
     }
 
     function deleteTransition(event) {
@@ -283,15 +332,19 @@ function DrawGraph() {
         <>
         <div className="editor-container"> 
             <svg ref={ref} style={{ height: '98vh', width: '68vw'}} ></svg>
-            <div className="testing-container" style={{ flex: 'inline-block', float: 'right', background: 'lightgrey', width: '30vw', overflowY: 'auto' }}>
-                <h3>Edit State Machine</h3> 
+            <div className="testing-container" style={{ flex: 'inline-block', float: 'right', background: 'lightgrey', width: '30vw', overflowY: 'auto', maxHeight: '98vh' }}>
+                <h3>Edit State Machine</h3>
                 <div className="editor-toolbar" style={{ padding: '3px', margin: '5px' }}>
                     <button onClick={addNode}>+ node</button>
                     <button onClick={refresh}>refresh</button>
                 </div>
                 <span>Enter a string to test</span><br/>
-                <input type='text' />
-                <button>Test</button>
+                <input type='text' onChange={(e) => { setSmTestString(e.target.value) }}/>
+                <button onClick={testMembership}>Test</button>
+                members: <br/>
+                <ul style={{ listStyleType: 'none', margin: '0', padding: '0' }}>
+                    
+                </ul>
                 <h3>Nodes</h3>
                 <ul style={{ listStyle: 'none', paddingLeft: 0, marginLeft: 20 }}>
                     {stateMachine.listOfNodes.map((node, idx) => (
@@ -311,23 +364,39 @@ function DrawGraph() {
                     ))}
                 </ul>
                 <h4>new transition</h4>
-                <form onSubmit={createTransition}>
+                <div>
                     <label >from:</label>
-                    <select id="from-node" name="from-node">
+                    <select id="from-node" name="from-node" onChange={(e) => { setNt_from(e.target.value) } }>
                         {stateMachine.listOfNodes.map((node) => (
                             <option key={`from-select-option-${node.nodeID}`}>{node.nodeID}</option>
                         ))}
                     </select>
                     <label >on:</label>
-                    <input id="on-value"/>
+                    <input id="on-value" onChange={ (e) => { setNt_parameter(e.target.value) }}/>
                     <label >to:</label>
-                    <select id="to-node" name="to-node">
+                    <select id="to-node" name="to-node" onChange={(e) => { setNt_to(e.target.value) }}>
                         {stateMachine.listOfNodes.map((node) => (
                             <option key={`to-select-option-${node.nodeID}`}>{node.nodeID}</option>
                         ))}
                     </select>
-                    <input type="submit"/>
-                </form>
+                    <button onClick={createTransition}>submit</button>
+                </div>
+                <h3>Regular Expression</h3> 
+                <div>
+                    Enter RegEx:
+                    <input onChange={(e) => { setRegEx(e.target.value) }}/>
+                    <button onClick={add_regex_to_project}>save</button><br/>
+                    Current RegEx: {stateMachine.regularExpression}<br/>
+                    Enter a string to test:
+                    <input onChange={(e) => { setReTestString(e.target.value) }}/>
+                    <button onClick={testMemberhsipRegex}>test</button><br/>
+                    Members:
+                    <ul style={{ listStyleType: 'none', padding: '0', margin: '0'}}>
+                        {reTested.map((m) => (
+                            <li>{m}</li>
+                        ))}
+                    </ul>
+                </div>
             </div>
         </div>
         <div> 

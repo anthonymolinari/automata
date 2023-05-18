@@ -497,7 +497,7 @@ export class automaton {
         }
     }
 
-    //"Deletes" a node by clearing all the data within.
+      //"Deletes" a node by clearing all the data within.
     removeNode(nodeID) {
         //Find the correct index of listOfNodes
         let nodeIdx = 0
@@ -520,6 +520,7 @@ export class automaton {
                 for(let iter = 0; iter < this.listOfNodes.length; iter++) {
                     if (this.listOfNodes[iter].nodeID === parseInt(command[0])) {
                         this.listOfNodes[command[0]].removeRule(this.listOfNodes[nodeIdx].linkedRules[iter])
+                        this.removeConnection(parseInt(command[0]), parseInt(command[1]), command[2])
                         break
                     }
                 }
@@ -540,6 +541,7 @@ export class automaton {
                 for(let iter = 0; iter < this.listOfNodes.length; iter++) {
                     if (this.listOfNodes[iter].nodeID === parseInt(command[1])) {
                         this.listOfNodes[iter].removeLinkedRule(this.listOfNodes[nodeIdx].rules[iter])
+                        this.listOfNodes[iter].removeRule(this.listOfNodes[nodeIdx].rules[iter])
                         break
                     }
                 }
@@ -549,7 +551,7 @@ export class automaton {
         
         //Final action to do
         this.listOfNodes.splice(nodeIdx, 1);
-    }
+    } 
 
     //Updates the link between nodes by getting the Origin, the
     //  destination and the parameter before building the
