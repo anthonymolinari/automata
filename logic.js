@@ -95,6 +95,7 @@ class automaton {
 
          //Run through the string, following the path through the NFA
          while (parseString.length > 0) {
+            let updated = 0
             for (let iter = 0; iter < this.listOfNodes[currIdx].rules.length; iter++) {
                 let command = this.statementParser(this.listOfNodes[currIdx].rules[iter])
                 let paths = 0
@@ -107,6 +108,7 @@ class automaton {
                         else if (this.listOfNodes[innerIter].nodeID === parseInt(command[1])) {
                             moreIdx.push(currIdx)
                         }
+                        updated++
                     }
                 }
                 else if (command[2] === "E") {
@@ -114,6 +116,10 @@ class automaton {
                     paths++
                 }
             }
+            if (updated === 0) {
+                break
+            }
+
             parseString = parseString.substr(1, parseString.length - 1)
             currIdx = nextIdx
 
@@ -126,7 +132,7 @@ class automaton {
         }
 
         //Check if the string ended on a goal node
-        if (this.listOfNodes[currIdx].identity === 2 || result === 0) {
+        if ((this.listOfNodes[currIdx].identity === 2 || result === 0) && parseString.length === 0) {
             return 0
         }
         //Return -1 if no goal node is reached
@@ -1256,7 +1262,7 @@ autoOne.updateIdentity(0, 1)
 autoOne.addNode(33, 17)
 //Link them together
 autoOne.updateLink(0, 1, 'a', 1)
-//autoOne.updateLink(1, 0, 'a', 1)
+autoOne.updateLink(1, 0, 'a', 1)
 //create the bottom nodes
 autoOne.addNode(13, 37)
 //autoOne.updateIdentity(2, 2)
@@ -1264,6 +1270,7 @@ autoOne.addNode(33, 37)
 autoOne.updateIdentity(3, 2)
 //Link the bottom nodes together
 autoOne.updateLink(0, 2, 'b', 1)
+autoOne.updateLink(2, 0, 'b', 1)
 autoOne.updateLink(2, 3, 'a', 1)
 autoOne.updateLink(1, 3, 'b', 1)
 //autoOne.updateLink(2, 3, 'a', 1)
@@ -1274,7 +1281,7 @@ autoOne.updateLink(1, 3, 'b', 1)
 console.log(autoOne.connectionList)
 //autoOne.removeNode(1)
 //console.log(autoOne.connectionList)
-let testVal = autoOne.testMembershipDFA('abaaa')
+let testVal = autoOne.testMembershipNFA('aabab')
 
 if (testVal === -1) {
     console.log("Membership failed")
